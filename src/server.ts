@@ -251,10 +251,10 @@ export function createServer(): Server {
 
             // If the handler returned a syntax error object, present it clearly
             if (result && typeof result === 'object' && 'result' in result && result.result === 'syntax_error' && 'validation' in result) {
-                 const validation = (result as any).validation;
+                 const validation = (result as Record<string, any>).validation;
                  const errorMsgs = validation.formulaResults
-                    ?.filter((r: any) => !r.valid)
-                    ?.map((r: any) => `Formula "${r.formula}" is invalid: ${r.errors.join(', ')}`)
+                    ?.filter((r: Record<string, any>) => !r.valid)
+                    ?.map((r: Record<string, any>) => `Formula "${r.formula}" is invalid: ${r.errors.join(', ')}`)
                     .join('\n');
 
                  return {

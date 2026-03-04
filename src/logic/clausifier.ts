@@ -105,8 +105,8 @@ export function clausify(formula: string | ASTNode, options: ClausifyOptions = {
         const timeMs = Date.now() - startTime;
 
         // Preserve LogicError if it has a code
-        if (e && typeof e === 'object' && 'error' in e && (e as any).error?.code) {
-             const logicErr = (e as any).error;
+        if (e && typeof e === 'object' && 'error' in e && typeof (e as Record<string, unknown>).error === 'object' && (e as Record<string, Record<string, any>>).error?.code) {
+             const logicErr = (e as Record<string, any>).error;
              return {
                 success: false,
                 error: logicErr,
