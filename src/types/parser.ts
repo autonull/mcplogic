@@ -14,6 +14,15 @@ export type TokenType =
     | 'OR'            // |
     | 'NOT'           // -
     | 'EQUALS'        // =
+    | 'NOT_EQUALS'    // !=
+    | 'LT'            // <
+    | 'GT'            // >
+    | 'LTE'           // <=
+    | 'GTE'           // >=
+    | 'PLUS'          // +
+    | 'MINUS'         // -
+    | 'MULTIPLY'      // *
+    | 'DIVIDE'        // /
     | 'LPAREN'        // (
     | 'RPAREN'        // )
     | 'COMMA'         // ,

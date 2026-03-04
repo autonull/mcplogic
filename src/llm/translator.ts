@@ -54,11 +54,14 @@ export class HeuristicTranslator implements TranslationStrategy {
         }
 
         // 2. "All men are mortal" -> all x (man(x) -> mortal(x))
-        const allAre = s.match(/^all (\w+) are (\w+)$/);
+        // "All birds can fly" -> all x (bird(x) -> can_fly(x))
+        const allAre = s.match(/^all (\w+) (are|can) (.+)$/);
         if (allAre) {
             const sub = this.singularize(allAre[1]);
-            const pred = this.singularize(allAre[2]);
-            return `all x (${sub}(x) -> ${pred}(x))`;
+            const predWords = allAre[3].trim().split(/\s+/);
+            const pred = (allAre[2] === 'can' ? 'can_' : '') + predWords.join('_');
+            const finalPred = this.singularize(pred);
+            return `all x (${sub}(x) -> ${finalPred}(x))`;
         }
 
         // 3. "Some men are mortal" -> exists x (man(x) & mortal(x))
@@ -80,13 +83,18 @@ export class HeuristicTranslator implements TranslationStrategy {
         // 5. "If X then Y" (propositional/simple)
         // Handling variables is hard with regex, assuming propositional or 0-arity
         // "If raining then wet" -> raining -> wet
-        // Also handles "If raining, then wet" via regex flexibility on 'then'
-        const ifThen = s.match(/^if (.+?)(?:,)? then (.+)$/);
+        // "If it rains, the ground gets wet" -> rains -> ground_gets_wet
+        // Also handles "If raining, then wet" via regex flexibility on 'then' or comma
+        const ifThen = s.match(/^if (.+?)(?:,)(?: then)? (.+)$/);
         if (ifThen) {
-            // Recursive? Too complex for regex.
-            // Let's just handle simple atoms
-            const p = ifThen[1].trim().replace(/\s+/g, '_');
-            const q = ifThen[2].trim().replace(/\s+/g, '_');
+            const p = this.simplifyAtom(ifThen[1]);
+            const q = this.simplifyAtom(ifThen[2]);
+            return `${p} -> ${q}`;
+        }
+        const ifThenNoComma = s.match(/^if (.+?) then (.+)$/);
+        if (ifThenNoComma) {
+            const p = this.simplifyAtom(ifThenNoComma[1]);
+            const q = this.simplifyAtom(ifThenNoComma[2]);
             return `${p} -> ${q}`;
         }
 
@@ -99,7 +107,54 @@ export class HeuristicTranslator implements TranslationStrategy {
             return `${rel}(${transitive[1]}, ${transitive[3]})`;
         }
 
-        return null;
+        // 7. General declarative: "It is raining", "The ground is wet", "Penguins are birds"
+        // Need to be careful about commas from "Therefore, the ground is wet" which becomes "the ground is wet"
+        let cleanS = s.replace(/^therefore[,]?\s+/i, '').trim();
+        const isAre = cleanS.match(/^(.+?) (is|are) (.+)$/);
+        if (isAre) {
+            // Check if it looks like X are Y (plural)
+            if (isAre[2] === 'are') {
+                let sub = this.singularize(isAre[1].trim());
+                sub = sub.replace(/^(the\s+|a\s+|an\s+)/i, '').trim().replace(/\s+/g, '_');
+                let pred = this.singularize(isAre[3].trim());
+                pred = pred.replace(/^(the\s+|a\s+|an\s+)/i, '').trim().replace(/\s+/g, '_');
+                if (!sub.includes(' ') && !pred.includes(' ')) {
+                    return `all x (${sub}(x) -> ${pred}(x))`;
+                }
+            } else {
+                // "The ground is wet" -> wet(ground)
+                // "Socrates is a man" handled above, but if it fell through:
+                let sub = isAre[1].replace(/^,?\s*/, '').trim();
+                sub = sub.replace(/^(the\s+|a\s+|an\s+)/i, '').trim();
+                sub = sub.replace(/\s+/g, '_');
+                let pred = isAre[3].replace(/^(a\s+|an\s+)/i, '').trim().replace(/\s+/g, '_');
+                return `${pred}(${sub})`;
+            }
+        }
+
+        // 8. General capability: "Penguins can fly" -> can_fly(penguins) -> wait, "penguins" are plural.
+        const can = cleanS.match(/^(.+?) can (.+)$/);
+        if (can) {
+             let sub = this.singularize(can[1].trim());
+             sub = sub.replace(/^(the\s+|a\s+|an\s+)/i, '').trim();
+             sub = sub.replace(/^,?\s*/, '').trim().replace(/\s+/g, '_');
+             const pred = "can_" + can[2].trim().replace(/\s+/g, '_');
+             if (!sub.includes(' ')) {
+                 return `all x (${sub}(x) -> ${pred}(x))`;
+             }
+        }
+
+        // Fallback for simple atoms
+        return this.simplifyAtom(sentence);
+    }
+
+    private simplifyAtom(sentence: string): string {
+        // "it is raining" -> raining, "the ground is wet" -> ground_is_wet
+        let s = sentence.toLowerCase().trim();
+        s = s.replace(/^(it is|it\'s|there is)\s+/, '');
+        s = s.replace(/^(it\s+)/, '');
+        s = s.replace(/^(the|a|an)\s+/, '');
+        return s.replace(/[^\w\s]/g, '').trim().replace(/\s+/g, '_');
     }
 
     private singularize(word: string): string {

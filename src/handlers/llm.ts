@@ -36,10 +36,17 @@ export async function translateTextHandler(
         }
     }
 
-    return {
+    const finalResult: TranslateResult = {
         success: errors.length === 0,
         premises: result.premises,
         conclusion: result.conclusion,
         errors: errors.length > 0 ? errors : undefined
     };
+
+    if (errors.length > 0 && fallbackTranslator instanceof HeuristicTranslator && !inputRouter) {
+         // Provide a more user-friendly error if they are using the rule-based translator
+         finalResult.errors?.push("Note: The translation is currently limited to basic logical forms. Try rephrasing your input into simpler sentences like 'All X are Y' or 'X is Y'.");
+    }
+
+    return finalResult;
 }

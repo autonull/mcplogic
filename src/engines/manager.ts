@@ -181,7 +181,7 @@ export class EngineManager {
     /**
      * Select the best engine for the given problem.
      */
-    private async selectEngine(
+    public async selectEngine(
         premises: string[],
         conclusion: string,
         options?: ManagerProveOptions

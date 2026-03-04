@@ -87,6 +87,27 @@ describe('Parser - Extended Coverage', () => {
         });
     });
 
+    describe('Parser - Arithmetic', () => {
+        it('parses basic arithmetic equality', () => {
+            const ast = parse('2 + 2 = 4');
+            expect(ast.type).toBe('equals');
+            const eqNode = ast as any;
+            expect(eqNode.right.name).toBe('4');
+            expect(eqNode.left.type).toBe('function');
+            expect(eqNode.left.name).toBe('+');
+            expect(eqNode.left.args[0].name).toBe('2');
+        });
+
+        it('parses comparison operators', () => {
+            const ast = parse('x > 5');
+            expect(ast.type).toBe('predicate');
+            const pNode = ast as any;
+            expect(pNode.name).toBe('>');
+            expect(pNode.args[0].name).toBe('x');
+            expect(pNode.args[1].name).toBe('5');
+        });
+    });
+
     describe('astToString - Roundtrip', () => {
         const testCases = [
             'P(a)',
