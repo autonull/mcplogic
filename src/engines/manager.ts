@@ -161,8 +161,8 @@ export class EngineManager {
             let errorMsg = 'All engines failed in race mode';
 
             // Check if it's an AggregateError (standard in ES2021)
-            if (e instanceof Error && 'errors' in e && Array.isArray((e as any).errors)) {
-                 const errors = (e as any).errors as Error[];
+            if (e instanceof Error && 'errors' in e && Array.isArray((e as Record<string, any>).errors)) {
+                 const errors = (e as Record<string, any>).errors as Error[];
                  errorMsg = `All engines failed: ${errors.map(err => err.message).join('; ')}`;
             } else if (e instanceof Error) {
                 errorMsg = e.message;

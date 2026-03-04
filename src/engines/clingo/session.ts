@@ -24,11 +24,11 @@ export class ClingoSession implements EngineSession {
 
     async init() {
         if (!this.initialized) {
-            const clingo = (clingoWasm as any).default || clingoWasm;
+            const clingo = (clingoWasm as Record<string, any>).default || clingoWasm;
             if (typeof window !== 'undefined' && typeof window.document !== 'undefined') {
-                await (clingo.init as any)('/vendor/clingo-wasm/clingo.wasm');
+                await (clingo.init as unknown as (path: string) => Promise<void>)('/vendor/clingo-wasm/clingo.wasm');
             } else {
-                await (clingo.init as any)();
+                await (clingo.init as unknown as () => Promise<void>)();
             }
             this.initialized = true;
         }
@@ -84,7 +84,7 @@ export class ClingoSession implements EngineSession {
 
             // Run Clingo
             // run(program: string, models?: number, options?: string[])
-            const clingo = (clingoWasm as any).default || clingoWasm;
+            const clingo = (clingoWasm as Record<string, any>).default || clingoWasm;
             const runResult = await clingo.run(fullProgram, 1);
 
             if (runResult.Result === 'SATISFIABLE') {
@@ -107,7 +107,7 @@ export class ClingoSession implements EngineSession {
                     timeMs: Date.now() - startTime,
                 }, verbosity);
             } else if (runResult.Result === 'ERROR') {
-                 const errorMsg = (runResult as any).Error || 'Unknown Clingo Error';
+                 const errorMsg = (runResult as Record<string, any>).Error || 'Unknown Clingo Error';
                  return buildProveResult({
                     success: false,
                     result: 'error',
@@ -115,7 +115,7 @@ export class ClingoSession implements EngineSession {
                     timeMs: Date.now() - startTime,
                 }, verbosity);
             } else {
-                 const warnings = (runResult as any).Warnings ? (runResult as any).Warnings.join('\n') : '';
+                 const warnings = (runResult as Record<string, any>).Warnings ? (runResult as Record<string, any>).Warnings.join('\n') : '';
                  return buildProveResult({
                     success: false,
                     result: 'error',

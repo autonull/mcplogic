@@ -9,12 +9,12 @@ export interface Z3TranslationOptions {
 
 export class Z3Translator {
     private ctx: Z3Context;
-    private sort: any; // The domain sort
+    private sort: unknown; // The domain sort
     private options: Z3TranslationOptions;
 
     // Symbol tables
-    private functions: Map<string, any> = new Map();
-    private predicates: Map<string, any> = new Map();
+    private functions: Map<string, unknown> = new Map();
+    private predicates: Map<string, unknown> = new Map();
     private constants: Map<string, Z3Expr> = new Map();
 
     // Bound variables stack for quantifiers
@@ -79,7 +79,7 @@ export class Z3Translator {
     private translateQuantifier(node: ASTNode): Z3Expr {
         const varName = node.variable!;
         // Use Const for bound variable definition in quantifiers
-        const z3Var = this.ctx.Const(varName, this.sort);
+        const z3Var = this.ctx.Const(varName, this.sort as Parameters<typeof this.ctx.Const>[1]);
 
         const prev = this.boundVars.get(varName);
         this.boundVars.set(varName, z3Var);
@@ -90,11 +90,11 @@ export class Z3Translator {
         else this.boundVars.delete(varName);
 
         // ForAll/Exists expects array of Consts
-        // We cast to any because strict types might expect specific Sort parameters
+        // We cast to unknown and then to the required type
         if (node.type === 'forall') {
-            return this.ctx.ForAll([z3Var as any], body);
+            return this.ctx.ForAll([z3Var as unknown as Parameters<typeof this.ctx.ForAll>[0][0]], body);
         } else {
-            return this.ctx.Exists([z3Var as any], body);
+            return this.ctx.Exists([z3Var as unknown as Parameters<typeof this.ctx.Exists>[0][0]], body);
         }
     }
 
@@ -111,7 +111,7 @@ export class Z3Translator {
                 case 'gt': case 'greater': case '>': return this.ctx.GT(left, right);
                 case 'lte': case 'leq': case '<=': return this.ctx.LE(left, right);
                 case 'gte': case 'geq': case '>=': return this.ctx.GE(left, right);
-                case '!=': return this.ctx.Not(this.ctx.Eq(left as any, right as any));
+                case '!=': return this.ctx.Not(this.ctx.Eq(left, right));
             }
         }
 
@@ -120,13 +120,13 @@ export class Z3Translator {
         }
 
         if (!this.predicates.has(name)) {
-            const domain = args.map(() => this.sort);
+            const domain = args.map(() => this.sort as Parameters<typeof this.ctx.Function.declare>[1]);
             // Function.declare(name, ...domain, range)
             const decl = this.ctx.Function.declare(name, ...domain, this.ctx.Bool.sort());
             this.predicates.set(name, decl);
         }
 
-        const decl = this.predicates.get(name);
+        const decl = this.predicates.get(name) as any;
         return decl.call(...args);
     }
 
@@ -143,7 +143,7 @@ export class Z3Translator {
                 case 'minus': case 'sub': case '-': return this.ctx.Sub(left, right);
                 case 'times': case 'mul': case '*': return this.ctx.Product(left, right);
                 case 'divide': case 'div': case '/': return this.ctx.Div(left, right);
-                case 'mod': return this.ctx.Mod(left as any, right as any); // Mod might expect Int specifically
+                case 'mod': return this.ctx.Mod(left as unknown as Z3Arith, right as unknown as Z3Arith); // Mod expects Int specifically
                 case 'unary_minus': return this.ctx.Neg(left);
             }
         }
@@ -153,12 +153,12 @@ export class Z3Translator {
         }
 
         if (!this.functions.has(name)) {
-             const domain = args.map(() => this.sort);
-             const decl = this.ctx.Function.declare(name, ...domain, this.sort);
+             const domain = args.map(() => this.sort as Parameters<typeof this.ctx.Function.declare>[1]);
+             const decl = this.ctx.Function.declare(name, ...domain, this.sort as Parameters<typeof this.ctx.Function.declare>[1]);
              this.functions.set(name, decl);
         }
 
-        const decl = this.functions.get(name);
+        const decl = this.functions.get(name) as any;
         return decl.call(...args);
     }
 
@@ -178,7 +178,7 @@ export class Z3Translator {
         }
 
         if (!this.constants.has(name)) {
-            const c = this.ctx.Const(name, this.sort);
+            const c = this.ctx.Const(name, this.sort as Parameters<typeof this.ctx.Const>[1]);
             this.constants.set(name, c);
         }
 
