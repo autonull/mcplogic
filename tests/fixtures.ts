@@ -57,13 +57,15 @@ export function createTestEngine(options?: {
     return createLogicEngine(limit);
 }
 
+import { createEngineManager } from '../src/engines/manager';
+
 export function createTestModelFinder(options?: {
     maxDomainSize?: number;
     highPower?: boolean;
 }) {
     const { maxDomainSize = 10, highPower = false } = options ?? {};
     const size = highPower ? 25 : maxDomainSize;
-    return createModelFinder(30000, size);
+    return createModelFinder(30000, size, createEngineManager());
 }
 
 // === Assertion Helpers ===

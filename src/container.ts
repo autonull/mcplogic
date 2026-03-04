@@ -29,9 +29,9 @@ export interface ServerContainer {
 
 export function createContainer(): ServerContainer {
     // Initialize engines and managers
-    const modelFinder = createModelFinder();
-    const categoricalHelpers = new CategoricalHelpers();
     const engineManager = createEngineManager();
+    const modelFinder = createModelFinder(undefined, undefined, engineManager);
+    const categoricalHelpers = new CategoricalHelpers();
 
     // Initialize Session Persistence
     // Only use persistence if configured or default to local dir
