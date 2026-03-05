@@ -87,9 +87,13 @@ export class OntologyManager {
                 const isType = this.ontology.types.has(pred);
 
                 if (!isRelationship && !isType) {
+                    const allAllowed = [...Array.from(this.ontology.relationships), ...Array.from(this.ontology.types)];
+                    const helpText = allAllowed.length > 0
+                        ? ` Allowed predicates: ${allAllowed.join(', ')}.`
+                        : '';
                     throw createGenericError(
                         'INVALID_PREDICATE',
-                        `Predicate '${pred}' is not allowed by the ontology.`
+                        `Predicate '${pred}' is not allowed by the ontology.${helpText}`
                     );
                 }
             }

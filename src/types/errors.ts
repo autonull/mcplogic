@@ -230,7 +230,7 @@ export function createEngineError(
 ): LogicException {
   return new LogicException({
     code: 'ENGINE_ERROR',
-    message: `Prolog engine error: ${message}`,
+    message: `Engine error: ${message}`,
     details,
   });
 }

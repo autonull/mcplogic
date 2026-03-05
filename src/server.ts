@@ -249,6 +249,29 @@ export function createServer(): Server {
 
             const result = await handler(args, container, { onProgress });
 
+            // If the handler returned a syntax error object, present it clearly
+            if (result && typeof result === 'object' && 'result' in result && result.result === 'syntax_error' && 'validation' in result) {
+                 const validation = (result as Record<string, any>).validation;
+                 const errorMsgs = validation.formulaResults
+                    ?.filter((r: Record<string, any>) => !r.valid)
+                    ?.map((r: Record<string, any>) => `Formula "${r.formula}" is invalid: ${r.errors.join(', ')}`)
+                    .join('\n');
+
+                 return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: JSON.stringify({
+                                error: errorMsgs || 'Syntax Error',
+                                type: 'SyntaxError',
+                                details: validation
+                            }, null, 2),
+                        },
+                    ],
+                    isError: true,
+                 };
+            }
+
             return {
                 content: [
                     {

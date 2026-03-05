@@ -31,6 +31,21 @@ export class Tokenizer {
                 this.pos += 2;
                 continue;
             }
+            if (this.input.slice(this.pos, this.pos + 2) === '!=') {
+                this.addToken('NOT_EQUALS', '!=', this.pos);
+                this.pos += 2;
+                continue;
+            }
+            if (this.input.slice(this.pos, this.pos + 2) === '<=') {
+                this.addToken('LTE', '<=', this.pos);
+                this.pos += 2;
+                continue;
+            }
+            if (this.input.slice(this.pos, this.pos + 2) === '>=') {
+                this.addToken('GTE', '>=', this.pos);
+                this.pos += 2;
+                continue;
+            }
 
             // Single character tokens
             switch (char) {
@@ -51,11 +66,41 @@ export class Tokenizer {
                     this.pos++;
                     continue;
                 case '-':
+                    // Distinguish between NOT (usually prefixing a predicate/quantifier) and MINUS (arithmetic)
+                    // Simple heuristic: if the previous token was a variable/constant/RPAREN, it's a MINUS
+                    if (this.tokens.length > 0) {
+                        const lastType = this.tokens[this.tokens.length - 1].type;
+                        if (lastType === 'VARIABLE' || lastType === 'CONSTANT' || lastType === 'RPAREN') {
+                            this.addToken('MINUS', '-', this.pos);
+                            this.pos++;
+                            continue;
+                        }
+                    }
                     this.addToken('NOT', '-', this.pos);
                     this.pos++;
                     continue;
                 case '=':
                     this.addToken('EQUALS', '=', this.pos);
+                    this.pos++;
+                    continue;
+                case '<':
+                    this.addToken('LT', '<', this.pos);
+                    this.pos++;
+                    continue;
+                case '>':
+                    this.addToken('GT', '>', this.pos);
+                    this.pos++;
+                    continue;
+                case '+':
+                    this.addToken('PLUS', '+', this.pos);
+                    this.pos++;
+                    continue;
+                case '*':
+                    this.addToken('MULTIPLY', '*', this.pos);
+                    this.pos++;
+                    continue;
+                case '/':
+                    this.addToken('DIVIDE', '/', this.pos);
                     this.pos++;
                     continue;
                 case ',':

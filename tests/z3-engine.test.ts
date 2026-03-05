@@ -54,4 +54,13 @@ describe('Z3Engine', () => {
         );
         expect(result.result).toBe('proved');
     });
+
+    test('handles inline math operators', async () => {
+        const result = await engine.prove(
+            ['x > 0'],
+            'x + 1 > 1',
+             { enableArithmetic: true }
+        );
+        expect(result.result).toBe('proved');
+    });
 });

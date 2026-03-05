@@ -12,6 +12,7 @@ import { SATEngine } from '../engines/sat/index.js';
 import { findModelsSAT } from './strategies/sat.js';
 import { findModelsBacktracking } from './strategies/backtracking.js';
 import { formatModelString } from '../utils/response.js';
+import { EngineManager } from '../engines/manager.js';
 
 export type { Model, ModelResult };
 
@@ -22,10 +23,12 @@ export class ModelFinder {
     private timeout: number;
     private maxDomainSize: number;
     private satEngine = new SATEngine();
+    private engineManager?: EngineManager;
 
-    constructor(timeout: number = 5000, maxDomainSize: number = 10) {
+    constructor(timeout: number = 5000, maxDomainSize: number = 10, engineManager?: EngineManager) {
         this.timeout = timeout;
         this.maxDomainSize = maxDomainSize;
+        this.engineManager = engineManager;
     }
 
     /**
@@ -59,6 +62,17 @@ export class ModelFinder {
             for (const v of freeVars) {
                 signature.constants.add(v);
                 signature.variables.delete(v);
+            }
+
+            // First, quickly check if the premises are intrinsically contradictory using a theorem prover
+            // if we have an engine manager and they aren't inherently SAT-oriented.
+            if (this.engineManager && premises.length > 0) {
+                // Prove a trivial contradiction like 'a = b & -(a = b)' to see if premises are UNSAT
+                const contradictionCheck = await this.engineManager.prove(premises, 'contradiction_probe & -contradiction_probe', { maxSeconds: 2, engine: 'sat' });
+                if (contradictionCheck.result === 'proved') {
+                    // The premises entail false, meaning they are intrinsically contradictory
+                    return { success: false, result: 'no_model', interpretation: 'Premises are contradictory' };
+                }
             }
 
             // Try increasing domain sizes
@@ -129,6 +143,6 @@ export class ModelFinder {
 /**
  * Create a model finder instance
  */
-export function createModelFinder(timeout?: number, maxDomainSize?: number): ModelFinder {
-    return new ModelFinder(timeout, maxDomainSize);
+export function createModelFinder(timeout?: number, maxDomainSize?: number, engineManager?: EngineManager): ModelFinder {
+    return new ModelFinder(timeout, maxDomainSize, engineManager);
 }

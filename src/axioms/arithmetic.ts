@@ -56,14 +56,14 @@ export function containsArithmetic(node: ASTNode): boolean {
  * Check if a predicate name is an arithmetic comparison.
  */
 export function isArithmeticPredicate(name: string): boolean {
-    return ['lt', 'gt', 'lte', 'gte', 'less', 'greater', 'leq', 'geq'].includes(name);
+    return ['lt', 'gt', 'lte', 'gte', 'less', 'greater', 'leq', 'geq', '<', '>', '<=', '>=', '!='].includes(name);
 }
 
 /**
  * Check if a function name is an arithmetic operator.
  */
 export function isArithmeticOperator(name: string): boolean {
-    return ['plus', 'minus', 'times', 'divide', 'mod', 'add', 'sub', 'mul', 'div'].includes(name);
+    return ['plus', 'minus', 'times', 'divide', 'mod', 'add', 'sub', 'mul', 'div', '+', '-', '*', '/', 'unary_minus'].includes(name);
 }
 
 /**

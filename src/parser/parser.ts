@@ -156,47 +156,49 @@ export class Parser {
             return formula;
         }
 
-        // Must be a predicate or equality
-        if (this.current().type === 'VARIABLE') {
-            const name = this.advance().value;
+        // It could be a relation between terms: term OP term (e.g. x = y, 2 + 2 = 4)
+        // Or it could be a predicate: P(x)
+        // Since terms can start with variables/constants/numbers, we parse a term first.
+        const leftTerm = this.parseTermExpr();
 
-            // Check if it's a predicate call
-            if (this.current().type === 'LPAREN') {
-                this.advance();
-                const args = this.parseTermList();
-                this.expect('RPAREN');
+        // If the next token is a relation operator (=, !=, <, >, <=, >=)
+        const type = this.current().type;
+        if (type === 'EQUALS' || type === 'NOT_EQUALS' || type === 'LT' || type === 'GT' || type === 'LTE' || type === 'GTE') {
+            this.advance();
+            const rightTerm = this.parseTermExpr();
+            let relationNode: ASTNode;
 
-                // Check for equality
-                if (this.current().type === 'EQUALS') {
-                    this.advance();
-                    const right = this.parseTerm();
-                    return {
-                        type: 'equals',
-                        left: { type: 'function', name, args },
-                        right
-                    };
-                }
-
-                return { type: 'predicate', name, args };
-            }
-
-            // Could be an equality like x = y
-            if (this.current().type === 'EQUALS') {
-                this.advance();
-                const right = this.parseTerm();
-                return {
-                    type: 'equals',
-                    left: this.classifyTerm(name),
-                    right
+            if (type === 'EQUALS') {
+                relationNode = { type: 'equals', left: leftTerm, right: rightTerm };
+            } else {
+                const opMap: Record<string, string> = {
+                    'NOT_EQUALS': '!=',
+                    'LT': '<',
+                    'GT': '>',
+                    'LTE': '<=',
+                    'GTE': '>='
+                };
+                relationNode = {
+                    type: 'predicate',
+                    name: opMap[type],
+                    args: [leftTerm, rightTerm]
                 };
             }
+            return relationNode;
+        }
 
-            // Bare predicate without args (propositional)
-            return { type: 'predicate', name, args: [] };
+        // If it's not a relation, it must be a predicate.
+        // A predicate in AST is represented as { type: 'predicate', name, args }.
+        // If leftTerm is a variable or constant, it's a 0-ary predicate.
+        // If leftTerm is a function, it's an n-ary predicate.
+        if (leftTerm.type === 'variable' || leftTerm.type === 'constant') {
+             return { type: 'predicate', name: leftTerm.name, args: [] };
+        } else if (leftTerm.type === 'function') {
+             return { type: 'predicate', name: leftTerm.name, args: leftTerm.args };
         }
 
         throw createParseError(
-            `Unexpected token '${this.current().value}'`,
+            `Expected predicate or relation but got term type ${leftTerm.type}`,
             this.originalInput,
             this.current().position
         );
@@ -206,21 +208,67 @@ export class Parser {
         const terms: ASTNode[] = [];
 
         if (this.current().type !== 'RPAREN') {
-            terms.push(this.parseTerm());
+            terms.push(this.parseTermExpr());
 
             while (this.current().type === 'COMMA') {
                 this.advance();
-                terms.push(this.parseTerm());
+                terms.push(this.parseTermExpr());
             }
         }
 
         return terms;
     }
 
+    private parseTermExpr(): ASTNode {
+        let left = this.parseFactor();
+
+        while (this.current().type === 'PLUS' || this.current().type === 'MINUS') {
+            const op = this.advance().type;
+            const right = this.parseFactor();
+            left = {
+                type: 'function',
+                name: op === 'PLUS' ? '+' : '-',
+                args: [left, right]
+            };
+        }
+
+        return left;
+    }
+
+    private parseFactor(): ASTNode {
+        let left = this.parseTerm();
+
+        while (this.current().type === 'MULTIPLY' || this.current().type === 'DIVIDE') {
+            const op = this.advance().type;
+            const right = this.parseTerm();
+            left = {
+                type: 'function',
+                name: op === 'MULTIPLY' ? '*' : '/',
+                args: [left, right]
+            };
+        }
+
+        return left;
+    }
+
     private parseTerm(): ASTNode {
+        // Unary minus
+        if (this.current().type === 'MINUS') {
+             this.advance();
+             const arg = this.parseTerm();
+             return { type: 'function', name: 'unary_minus', args: [arg] };
+        }
+
+        if (this.current().type === 'LPAREN') {
+             this.advance();
+             const expr = this.parseTermExpr();
+             this.expect('RPAREN');
+             return expr;
+        }
+
         if (this.current().type !== 'VARIABLE') {
             throw createParseError(
-                `Expected term but got ${this.current().type}`,
+                `Expected term but got ${this.current().type} '${this.current().value}'`,
                 this.originalInput,
                 this.current().position
             );

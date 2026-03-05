@@ -20,4 +20,21 @@ describe('SAT Model Finding', () => {
             expect(result.model.domainSize).toBeGreaterThanOrEqual(1);
         }
     });
+
+    it('fails quickly when premises are contradictory', async () => {
+        const axioms = [
+            'can_do(tesla, transport)',
+            'all x (can_do(x, transport) -> -can_do(x, change_position))',
+            'can_do(tesla, change_position)'
+        ];
+
+        const startTime = Date.now();
+        const result = await finder.findModel(axioms, { useSAT: true, maxDomainSize: 5 });
+        const endTime = Date.now();
+
+        // Actually, no_model usually returns success: true because the tool successfully completed its search
+        expect(result.result).toBe('no_model');
+        // Should finish very quickly (under 2 seconds) without exhausting domain sizes
+        expect(endTime - startTime).toBeLessThan(2000);
+    });
 });

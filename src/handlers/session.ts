@@ -98,18 +98,25 @@ export async function querySessionHandler(
     if (session.engineSession) {
         try {
             const proveResult = await session.engineSession.prove(goal, { verbosity });
-            return {
-                session_id: session.id,
-                premise_count: session.premises.length,
-                ...buildProveResponse(proveResult, verbosity),
-            };
+            // If the engine itself returns an error indicating it cannot handle the formula
+            // (e.g., Prolog engine failing on non-Horn clauses), fall back to engineManager.
+            if (proveResult.result === 'error' && proveResult.error && typeof proveResult.error === 'string' &&
+                (proveResult.error.includes('Horn') || proveResult.error.includes('not supported'))) {
+                console.warn(`Session engine ${session.engineName} cannot handle goal, falling back to stateless...`);
+            } else {
+                return {
+                    session_id: session.id,
+                    premise_count: session.premises.length,
+                    ...buildProveResponse(proveResult, verbosity),
+                };
+            }
         } catch (e) {
-             // Fallback to stateless prove if session prove fails?
+             // Fallback to stateless prove if session prove fails
              console.warn(`Session prove failed on ${session.engineName}, falling back to stateless...`, e);
         }
     }
 
-    // Fallback or if no session engine active
+    // Fallback or if no session engine active, let the EngineManager select the best engine for these premises + goal
     const proveResult = await engineManager.prove(session.premises, goal, { verbosity });
     return {
         session_id: session.id,

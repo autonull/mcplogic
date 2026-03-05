@@ -307,12 +307,15 @@ export class SessionManager {
         }
 
         // Re-evaluate best engine based on premises
-        const hasArithmetic = session.premises.some(p => {
-            try { return containsArithmetic(parse(p)); } catch { return false; }
-        });
-
-        // Prefer Z3 for arithmetic, otherwise Prolog is lighter
-        const engineName = hasArithmetic ? 'z3' : 'prolog';
+        let engineName = 'prolog';
+        if (session.premises.length > 0) {
+            // We can use the engineManager's selectEngine method, which does thorough analysis.
+            // Since we don't have a conclusion here, we can just pass an empty string
+            // and it will only evaluate the premises (which will be negated, but it's ok)
+            // Wait, we can pass the premises as is.
+            const engine = await this.engineManager.selectEngine(session.premises, "true");
+            engineName = engine.name;
+        }
 
         try {
             session.engineSession = await this.engineManager.createSession(engineName);

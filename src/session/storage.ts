@@ -4,6 +4,8 @@
 
 import { Session } from './manager.js';
 
+import { OntologyConfig } from '../types/ontology.js';
+
 export interface SavedSession {
     id: string;
     premises: string[];
@@ -11,7 +13,7 @@ export interface SavedSession {
     lastAccessedAt: number;
     ttlMs: number;
     engineName?: string;
-    ontologyConfig?: any; // To store ontology configuration
+    ontologyConfig?: OntologyConfig; // To store ontology configuration
 }
 
 export interface SessionStorage {

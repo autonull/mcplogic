@@ -43,17 +43,17 @@ export class ClingoEngine implements ReasoningEngine {
         try {
             // Handle module resolution differences
             // clingo-wasm can be imported as default or named export depending on environment/bundler
-            const clingoLib = (clingoWasm as any).default || clingoWasm;
+            const clingoLib = (clingoWasm as Record<string, any>).default || clingoWasm;
             this.clingo = clingoLib as ClingoModule;
 
             // Check if we are in a browser environment
             if (typeof window !== 'undefined' && typeof window.document !== 'undefined') {
                 // In browser, we need to locate the wasm file
                 // The cast is necessary because the TS definitions for clingo-wasm might be incomplete regarding init parameters
-                await (this.clingo!.init as any)('/vendor/clingo-wasm/clingo.wasm');
+                await (this.clingo!.init as unknown as (path: string) => Promise<void>)('/vendor/clingo-wasm/clingo.wasm');
             } else {
                 // In Node, init takes no arguments or handles it internally
-                await (this.clingo!.init as any)();
+                await (this.clingo!.init as unknown as () => Promise<void>)();
             }
             this.initialized = true;
         } catch (e) {
