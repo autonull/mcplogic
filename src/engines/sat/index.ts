@@ -205,7 +205,7 @@ export class SATEngine implements ReasoningEngine {
                 return buildProveResult({
                     success: false,
                     result: 'failed',
-                    message: `Cannot prove: ${conclusion}`,
+                    message: `The argument is invalid. A counterexample exists showing the conclusion does not follow from the premises.`,
                     error: 'Found satisfying assignment for premises ∧ ¬conclusion',
                     timeMs: Date.now() - startTime,
                     clauseCount: groundClauses.length,

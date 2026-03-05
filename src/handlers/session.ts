@@ -55,13 +55,21 @@ export async function assertPremiseHandler(
         };
     }
 
-    const session = await sessionManager.assertPremise(session_id, formula);
-    return {
-        success: true,
-        session_id: session.id,
-        premise_count: session.premises.length,
-        formula_added: formula,
-    };
+    try {
+        const session = await sessionManager.assertPremise(session_id, formula);
+        return {
+            success: true,
+            session_id: session.id,
+            premise_count: session.premises.length,
+            formula_added: formula,
+        };
+    } catch (e) {
+        return {
+            success: false,
+            result: 'error',
+            error: e instanceof Error ? e.message : String(e)
+        };
+    }
 }
 
 export async function querySessionHandler(
@@ -82,7 +90,24 @@ export async function querySessionHandler(
         return { result: 'syntax_error', validation };
     }
 
-    const session = sessionManager.get(session_id);
+    let session;
+    try {
+        session = sessionManager.get(session_id);
+    } catch (e) {
+        return {
+            success: false,
+            result: 'error',
+            error: e instanceof Error ? e.message : String(e)
+        };
+    }
+
+    if (session.premises.length === 0) {
+        return {
+            success: false,
+            result: 'error',
+            error: 'Session has no premises to query against.'
+        };
+    }
 
     // If session has an active engine session, prefer it?
     // But engineManager.prove is stateless/creates new session.
@@ -134,17 +159,25 @@ export async function retractPremiseHandler(
 ): Promise<object> {
     const { session_id, formula } = args;
 
-    const removed = await sessionManager.retractPremise(session_id, formula);
-    const session = sessionManager.get(session_id);
+    try {
+        const removed = await sessionManager.retractPremise(session_id, formula);
+        const session = sessionManager.get(session_id);
 
-    return {
-        success: removed,
-        session_id: session.id,
-        premise_count: session.premises.length,
-        message: removed
-            ? `Removed: ${formula}`
-            : `Formula not found in session: ${formula}`,
-    };
+        return {
+            success: removed,
+            session_id: session.id,
+            premise_count: session.premises.length,
+            message: removed
+                ? `Removed: ${formula}`
+                : `Formula not found in session: ${formula}`,
+        };
+    } catch (e) {
+        return {
+            success: false,
+            result: 'error',
+            error: e instanceof Error ? e.message : String(e)
+        };
+    }
 }
 
 export async function listPremisesHandler(
@@ -154,18 +187,26 @@ export async function listPremisesHandler(
 ): Promise<object> {
     const { session_id } = args;
 
-    const premises = await sessionManager.listPremises(session_id);
-    const info = sessionManager.getInfo(session_id);
+    try {
+        const premises = await sessionManager.listPremises(session_id);
+        const info = sessionManager.getInfo(session_id);
 
-    return {
-        session_id,
-        premise_count: premises.length,
-        premises,
-        ...(verbosity === 'detailed' && {
-            created_at: new Date(info.createdAt).toISOString(),
-            expires_at: new Date(info.expiresAt).toISOString(),
-        }),
-    };
+        return {
+            session_id,
+            premise_count: premises.length,
+            premises,
+            ...(verbosity === 'detailed' && {
+                created_at: new Date(info.createdAt).toISOString(),
+                expires_at: new Date(info.expiresAt).toISOString(),
+            }),
+        };
+    } catch (e) {
+        return {
+            success: false,
+            result: 'error',
+            error: e instanceof Error ? e.message : String(e)
+        };
+    }
 }
 
 export async function clearSessionHandler(
@@ -174,14 +215,22 @@ export async function clearSessionHandler(
 ): Promise<object> {
     const { session_id } = args;
 
-    const session = await sessionManager.clear(session_id);
+    try {
+        const session = await sessionManager.clear(session_id);
 
-    return {
-        success: true,
-        session_id: session.id,
-        message: 'Session cleared',
-        premise_count: 0,
-    };
+        return {
+            success: true,
+            session_id: session.id,
+            message: 'Session cleared',
+            premise_count: 0,
+        };
+    } catch (e) {
+        return {
+            success: false,
+            result: 'error',
+            error: e instanceof Error ? e.message : String(e)
+        };
+    }
 }
 
 export async function deleteSessionHandler(

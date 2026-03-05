@@ -13,7 +13,23 @@ export async function translateTextHandler(
         ? await inputRouter.getTranslator(args.text)
         : fallbackTranslator;
 
-    const result = await translator.translate(args.text);
+    let result;
+    try {
+        result = await translator.translate(args.text);
+    } catch (e) {
+        // Handle LLM crash gracefully
+        const msg = (e as Error).message || String(e);
+        const suggestion = msg.includes('fetch failed')
+            ? ' Ensure your LLM Provider (OpenAI, Ollama, etc.) is running and properly configured.'
+            : '';
+
+        return {
+            success: false,
+            premises: [],
+            errors: [`Translation engine failed: ${msg}.${suggestion}`,
+                     "Graceful Fallback Instruction: As the host AI assistant, please translate the user's natural language into First-Order Logic (FOL) yourself using your own reasoning capabilities, and then directly call the 'prove' or 'find-model' tools with the resulting FOL formulas."]
+        };
+    }
 
     // Validation
     const errors: string[] = result.errors || [];

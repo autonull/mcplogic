@@ -16,6 +16,7 @@ import { EngineSession } from '../engines/interface.js';
 import { EngineManager } from '../engines/manager.js';
 import { parse } from '../parser/index.js';
 import { containsArithmetic } from '../axioms/arithmetic.js';
+import { createGenericError } from '../types/errors.js';
 import { SessionStorage, SavedSession } from './storage.js';
 
 // Browser-safe UUID generation
@@ -240,9 +241,24 @@ export class SessionManager {
             const session = this.get(id);
 
             let processedFormula = formula;
+
+            try {
+                // Ensure formula is structurally valid before parsing
+                parse(formula);
+            } catch (e) {
+                // The validateFormulas in handler usually catches this, but to be robust at the API level:
+                throw createGenericError('SYNTAX_ERROR', `Invalid formula: ${(e as Error).message}`);
+            }
+
             if (session.ontology) {
                 processedFormula = session.ontology.expandSynonyms(formula);
                 session.ontology.validate(processedFormula);
+            }
+
+            // Check for duplicates
+            if (session.premises.includes(processedFormula)) {
+                // Don't add duplicate, but don't fail either
+                return session;
             }
 
             // Add to premises list (Source of Truth)

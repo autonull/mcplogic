@@ -25,7 +25,7 @@ export class ModelFinder {
     private satEngine = new SATEngine();
     private engineManager?: EngineManager;
 
-    constructor(timeout: number = 5000, maxDomainSize: number = 10, engineManager?: EngineManager) {
+    constructor(timeout: number = 10000, maxDomainSize: number = 25, engineManager?: EngineManager) {
         this.timeout = timeout;
         this.maxDomainSize = maxDomainSize;
         this.engineManager = engineManager;
@@ -94,6 +94,10 @@ export class ModelFinder {
 
             // Try increasing domain sizes
             for (let size = startSize; size <= endSize; size++) {
+                if (opts.onProgress) {
+                    opts.onProgress(size / endSize, `Searching domain size ${size}...`);
+                }
+
                 if (Date.now() - startTime > (opts.maxSeconds ?? 30) * 1000) {
                     return { success: false, result: 'timeout' };
                 }

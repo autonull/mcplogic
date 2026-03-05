@@ -106,7 +106,7 @@ export class ClingoEngine implements ReasoningEngine {
                 return buildProveResult({
                     success: false,
                     result: 'failed',
-                    message: `Cannot prove: ${conclusion}`,
+                    message: `The argument is invalid. A counterexample exists showing the conclusion does not follow from the premises.`,
                     error: 'Counterexample found (SAT)',
                     timeMs: Date.now() - startTime,
                 }, verbosity);

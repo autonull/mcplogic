@@ -92,6 +92,12 @@ export async function generateCasesHandler(
             cases
         };
     } catch (e) {
-        throw createGenericError('ENGINE_ERROR', `Case generation failed: ${(e as Error).message}`);
+        // Return a clearer error without necessarily crashing the MCP server
+        const msg = (e as Error).message || String(e);
+        const suggestion = msg.includes('fetch failed')
+            ? ' Ensure your LLM Provider (OpenAI, Ollama, etc.) is running and properly configured in the environment variables.'
+            : '';
+
+        throw createGenericError('ENGINE_ERROR', `Case generation failed: ${msg}.${suggestion}`);
     }
 }

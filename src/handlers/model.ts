@@ -15,11 +15,12 @@ export async function findModelHandler(
         count?: number;
     },
     defaultFinder: ModelFinder,
-    verbosity: Verbosity
+    verbosity: Verbosity,
+    onProgress?: (progress: number | undefined, message: string) => void
 ): Promise<ModelResponse> {
     const { premises, domain_size, max_domain_size, use_sat, enable_symmetry, count } = args;
 
-    // Create finder with custom max domain size if specified
+    // Create finder with custom max domain size if specified (default 25 if not provided)
     const finder = max_domain_size ? createModelFinder(undefined, max_domain_size) : defaultFinder;
 
     // Determine bounds. If domain_size is set, use it as both min and max (exact search).
@@ -33,7 +34,8 @@ export async function findModelHandler(
         useSAT: use_sat,
         enableSymmetry: enable_symmetry,
         maxDomainSize: domain_size ?? max_domain_size,
-        count
+        count,
+        onProgress
     };
 
     const modelResult = await finder.findModel(premises, options);
@@ -50,7 +52,8 @@ export async function findCounterexampleHandler(
         enable_symmetry?: boolean;
     },
     defaultFinder: ModelFinder,
-    verbosity: Verbosity
+    verbosity: Verbosity,
+    onProgress?: (progress: number | undefined, message: string) => void
 ): Promise<ModelResponse> {
     const { premises, conclusion, domain_size, max_domain_size, use_sat, enable_symmetry } = args;
     // Create finder with custom max domain size if specified
@@ -59,7 +62,8 @@ export async function findCounterexampleHandler(
     const options = {
         useSAT: use_sat,
         enableSymmetry: enable_symmetry,
-        maxDomainSize: domain_size ?? max_domain_size
+        maxDomainSize: domain_size ?? max_domain_size,
+        onProgress
     };
 
     const modelResult = await finder.findCounterexample(premises, conclusion, options);
