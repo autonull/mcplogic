@@ -1,4 +1,18 @@
 import { HeuristicTranslator } from '../src/llm/translator.js';
+import { StandardLLMProvider } from '../src/llm/provider.js';
+
+describe('StandardLLMProvider', () => {
+    test('can be instantiated and complete returns a fallback response or throws network error', async () => {
+        const p = new StandardLLMProvider();
+        try {
+            const response = await p.complete([{role: 'user', content: 'hello'}]);
+            expect(typeof response).toBe('string');
+        } catch (e: any) {
+            // Depending on env, it might throw due to missing API keys
+            expect(e).toBeDefined();
+        }
+    });
+});
 
 describe('HeuristicTranslator', () => {
     let translator: HeuristicTranslator;

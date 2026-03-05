@@ -4,6 +4,7 @@
 
 import { parse, Tokenizer, Parser } from '../src/parser/index.js';
 import { astToString } from '../src/ast/index.js';
+import { validateFormulas } from '../src/validation/syntax.js';
 
 describe('Parser - Extended Coverage', () => {
     describe('Tokenizer', () => {
@@ -147,5 +148,25 @@ describe('Parser - Error Handling', () => {
 
     test('throws on invalid token sequence', () => {
         expect(() => parse('P(x) & & Q(y)')).toThrow();
+    });
+});
+
+describe('Validation - syntax.ts', () => {
+    test('validates formulas correctly and returns errors for missing parenthesis', () => {
+        const formula = "all x (triangle(x) -> have_three_side(x)";
+        const result = validateFormulas([formula]);
+        expect(result.valid).toBe(false);
+        expect(result.formulaResults.length).toBe(1);
+        expect(result.formulaResults[0].formula).toBe(formula);
+        expect(result.formulaResults[0].valid).toBe(false);
+        expect(result.formulaResults[0].errors.length).toBeGreaterThan(0);
+        expect(result.formulaResults[0].errors[0]).toContain('Expected');
+    });
+
+    test('validates valid formulas successfully', () => {
+        const result = validateFormulas(["all x (triangle(x) -> have_three_side(x))"]);
+        expect(result.valid).toBe(true);
+        expect(result.formulaResults[0].valid).toBe(true);
+        expect(result.formulaResults[0].errors.length).toBe(0);
     });
 });

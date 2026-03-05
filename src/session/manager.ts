@@ -247,7 +247,7 @@ export class SessionManager {
                 parse(formula);
             } catch (e) {
                 // The validateFormulas in handler usually catches this, but to be robust at the API level:
-                throw createGenericError('SYNTAX_ERROR', `Invalid formula: ${(e as Error).message}`);
+                throw createGenericError('PARSE_ERROR', `Invalid formula: ${(e as Error).message}`);
             }
 
             if (session.ontology) {
