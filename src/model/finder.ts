@@ -94,6 +94,10 @@ export class ModelFinder {
 
             // Try increasing domain sizes
             for (let size = startSize; size <= endSize; size++) {
+                if (opts.onProgress) {
+                    opts.onProgress(size / endSize, `Searching domain size ${size}...`);
+                }
+
                 if (Date.now() - startTime > (opts.maxSeconds ?? 30) * 1000) {
                     return { success: false, result: 'timeout' };
                 }

@@ -72,11 +72,11 @@ const toolHandlers: Record<string, ToolHandler> = {
     'check-well-formed': (args) =>
         Handlers.checkWellFormedHandler(args as unknown as CheckWellFormedHandlerArgs),
 
-    'find-model': (args, c) =>
-        Handlers.findModelHandler(args as unknown as FindModelHandlerArgs, c.modelFinder, args.verbosity),
+    'find-model': (args, c, opts) =>
+        Handlers.findModelHandler(args as unknown as FindModelHandlerArgs, c.modelFinder, args.verbosity, opts?.onProgress),
 
-    'find-counterexample': (args, c) =>
-        Handlers.findCounterexampleHandler(args as unknown as FindCounterexampleHandlerArgs, c.modelFinder, args.verbosity),
+    'find-counterexample': (args, c, opts) =>
+        Handlers.findCounterexampleHandler(args as unknown as FindCounterexampleHandlerArgs, c.modelFinder, args.verbosity, opts?.onProgress),
 
     'verify-commutativity': (args, c) =>
         Handlers.verifyCommutativityHandler(args as unknown as VerifyCommutativityHandlerArgs, c.categoricalHelpers),
