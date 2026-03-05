@@ -220,6 +220,32 @@ describe('Clausifier', () => {
             expect(result.success).toBe(true);
             expect(isHornFormula(result.clauses!)).toBe(true);
         });
+
+        // Test cases from test_is_horn.ts
+        const checkHorn = (premises: string[], conclusion: string) => {
+            const astStr = [...premises, `-(${conclusion})`].join(' & ');
+            const result = clausify(astStr);
+            expect(result.success).toBe(true);
+            return isHornFormula(result.clauses!);
+        };
+
+        it('should correctly identify Modus Tollens refutations as Horn', () => {
+            expect(checkHorn(['rains -> ground_gets_wet', 'not_wet(ground)'], 'not_raining(it)')).toBe(true);
+            expect(checkHorn(['rains -> ground_gets_wet', '-ground_gets_wet'], '-rains')).toBe(true);
+        });
+
+        it('should correctly identify Existential Instantiation Failure refutation as Horn', () => {
+            // negated conclusion expands to ∀x (¬human(x) ∨ ¬mortal(x)), premises add ¬human(x) ∨ mortal(x)
+            // But checking horn formula property on the resulting clauses
+            // Wait, this ACTUALLY produces Horn clauses:
+            // clause 1: -human(X) | mortal(X)   (Horn, 1 pos)
+            // clause 2: -human(Y) | -mortal(Y)  (Horn, 0 pos)
+            expect(checkHorn(['all x (human(x) -> mortal(x))'], 'exists x (human(x) & mortal(x))')).toBe(true);
+        });
+
+        it('should correctly identify Syllogistic Reasoning refutation as Horn', () => {
+            expect(checkHorn(['all x (triangle(x) -> have_three_side(x))'], 'something_has_three_sides -> triangle')).toBe(true);
+        });
     });
 
     describe('clausesToProlog', () => {
