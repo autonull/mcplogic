@@ -276,12 +276,13 @@ If found, proves the conclusion doesn't logically follow.`,
     // ==================== LLM TOOLS ====================
     {
         name: 'translate-text',
-        description: `Translate natural language to First-Order Logic (FOL).
+        description: `Translate natural language to First-Order Logic (FOL) using the server's internal translator.
 
-**When to use:** Converting user input into logical formulas.
+**When to use:** Converting basic user input into logical formulas.
+**Important Host AI Instruction:** If this tool fails due to complex language or an unconfigured internal LLM, you (the host AI) should gracefully fallback by doing the FOL translation yourself. You are highly capable of understanding natural language. Simply formulate the FOL premises and conclusion yourself, and directly invoke the 'prove' or 'find-model' tools instead of relying on 'translate-text'.
 **Features:**
 - Handles basic standard English forms ("All X are Y", "A is B", "If P then Q")
-- Works offline (heuristic-based)
+- Works offline (heuristic-based fallback)
 - Validates generated formulas`,
         inputSchema: {
             type: 'object',

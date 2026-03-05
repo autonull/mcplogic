@@ -38,7 +38,7 @@ export async function translateText(client: Client, text: string, validate: bool
 export async function proveGoal(client: Client, premises: string[], goal: string) {
     const result = await client.callTool({
         name: 'prove',
-        arguments: { premises, goal }
+        arguments: { premises, conclusion: goal }
     });
 
     const content = (result as any).content[0];

@@ -45,7 +45,8 @@ export async function translateTextHandler(
 
     if (errors.length > 0 && fallbackTranslator instanceof HeuristicTranslator && !inputRouter) {
          // Provide a more user-friendly error if they are using the rule-based translator
-         finalResult.errors?.push("Note: The translation is currently limited to basic logical forms. Try rephrasing your input into simpler sentences like 'All X are Y' or 'X is Y'.");
+         finalResult.errors?.push("The internal LLM is not configured, so the server fell back to basic heuristic regex translation which failed on this complex input.");
+         finalResult.errors?.push("Graceful Fallback Instruction: As the host AI assistant, please translate the user's natural language into First-Order Logic (FOL) yourself using your own reasoning capabilities, and then directly call the 'prove' or 'find-model' tools with the resulting FOL formulas.");
     }
 
     return finalResult;

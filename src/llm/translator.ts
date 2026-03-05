@@ -67,11 +67,12 @@ export class HeuristicTranslator implements TranslationStrategy {
 
         // 2. "All men are mortal" -> all x (man(x) -> mortal(x))
         // "All birds can fly" -> all x (bird(x) -> can_fly(x))
-        const allAre = s.match(/^all (\w+) (are|can) (.+)$/);
+        // "All birds fly" -> all x (bird(x) -> fly(x))
+        const allAre = s.match(/^all (\w+) (are|can )?(.+)$/);
         if (allAre) {
             const sub = this.singularize(allAre[1]);
             const predWords = allAre[3].trim().split(/\s+/);
-            const pred = (allAre[2] === 'can' ? 'can_' : '') + predWords.join('_');
+            const pred = (allAre[2] === 'can ' ? 'can_' : '') + predWords.join('_');
             const finalPred = this.singularize(pred);
             return `all x (${sub}(x) -> ${finalPred}(x))`;
         }
