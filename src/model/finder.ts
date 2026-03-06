@@ -68,21 +68,27 @@ export class ModelFinder {
             if (this.engineManager && premises.length > 0) {
                 // Ensure free variables parse as constants by renaming them before passing to the engine
                 const safeAsts = premises.map(p => parse(p));
-                for (const ast of safeAsts) {
-                    // We must use a custom traversal to mutate names safely
-                    const stack = [ast];
-                    while (stack.length > 0) {
-                        const node = stack.pop()!;
-                        if (node.type === 'variable' && node.name && freeVars.has(node.name)) {
-                            node.type = 'constant';
-                            node.name = `sk_c_${node.name}`;
-                        }
-                        if (node.left) stack.push(node.left);
-                        if (node.right) stack.push(node.right);
-                        if (node.operand) stack.push(node.operand);
-                        if (node.body) stack.push(node.body);
-                        if (node.args) stack.push(...node.args);
+                const renameFreeVars = (node: any, bound: Set<string>) => {
+                    if (node.type === 'forall' || node.type === 'exists') {
+                        const newBound = new Set(bound);
+                        if (node.variable) newBound.add(node.variable);
+                        if (node.body) renameFreeVars(node.body, newBound);
+                        return;
                     }
+                    if (node.type === 'variable' && node.name && freeVars.has(node.name) && !bound.has(node.name)) {
+                        node.type = 'constant';
+                        node.name = `sk_c_${node.name}`;
+                    }
+                    if (node.left) renameFreeVars(node.left, bound);
+                    if (node.right) renameFreeVars(node.right, bound);
+                    if (node.operand) renameFreeVars(node.operand, bound);
+                    if (node.args) {
+                        for (const arg of node.args) renameFreeVars(arg, bound);
+                    }
+                };
+
+                for (const ast of safeAsts) {
+                    renameFreeVars(ast, new Set());
                 }
                 const safePremises = safeAsts.map(a => astToString(a));
 
