@@ -132,13 +132,21 @@ function simpleFormatPrologTerm(term: string): string {
     } else if (term.length === 1 && /^[a-z]/.test(term)) {
         // Single lowercase letter: Free variable (implicitly universal)
         return term.toUpperCase();
-    } else if (/^[a-z]/.test(term)) {
-        // Lowercase string (length > 1): Constant
+    } else if (/^[a-z][a-zA-Z0-9_]*$/.test(term)) {
+        // Lowercase string (length > 1) starting with letter: Constant
+        return term;
+    } else if (/^-?\d+$/.test(term)) {
+        // Integer constant
         return term;
     } else {
         // Uppercase string or other: Constant
         // Example: Socrates -> socrates
-        return term.toLowerCase();
+        const lower = term.toLowerCase();
+        if (/^[a-z][a-zA-Z0-9_]*$/.test(lower)) {
+            return lower;
+        }
+        // If it starts with a number or contains special characters, quote it
+        return `'${term}'`;
     }
 }
 
