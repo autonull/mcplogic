@@ -87,9 +87,12 @@ npm run build
 npm start
 ```
 
-Or for development with auto-reload:
+### Verification
+
+Run the comprehensive health check to verify build, tests, and engine availability:
+
 ```bash
-npm run dev
+npm run verify
 ```
 
 ### Claude Desktop / MCP Client Configuration
@@ -107,6 +110,24 @@ Add to your MCP configuration:
 }
 ```
 
+### CLI Tools
+
+The package includes a CLI for offline usage and verification:
+
+```bash
+# Check engine status
+mcplogic check
+
+# Prove a theorem from a file
+mcplogic prove problem.p
+
+# Find a model
+mcplogic model theory.p
+
+# Interactive REPL
+mcplogic repl
+```
+
 ---
 
 ## Available Tools
@@ -121,6 +142,7 @@ Add to your MCP configuration:
 | **find-counterexample** | Find counterexamples showing statements don't follow |
 | **verify-commutativity** | Generate FOL for categorical diagram commutativity |
 | **get-category-axioms** | Get axioms for category/functor/monoid/group |
+| **translate-text** | Translate natural language to FOL (requires LLM) |
 
 ### Session Management Tools
 
@@ -267,4 +289,16 @@ Potential enhancements will be driven by real-world usage:
 - [x] **Streaming Progress** — Real-time progress notifications for long-running operations
 - **Extended Benchmarks** — TPTP library subset and group theory problem suites
 - [x] **Advanced Engines** — SMT (Z3), ASP (Clingo)
+- [x] **Evolution Engine** — Genetic algorithm for evolving efficient proof strategies
 - [ ] **Neural-Guided** — LLM-suggested proof paths with validation
+
+## Troubleshooting
+
+### WASM Engines (Z3 / Clingo)
+If you encounter errors related to `z3-solver` or `clingo-wasm`:
+1. Ensure your environment supports WebAssembly.
+2. In browser environments, ensure the `.wasm` files are served correctly. The `check` command can verify basic functionality in Node.js.
+3. If you see `OOM` or memory errors, try running with the default engine (Prolog) or increasing the timeout/inference limits.
+
+### build:browser Failures
+Ensure you have run `npm install` to get the latest type definitions. The browser build relies on specific overrides for WASM modules that are handled in `src/engines/*/index.ts`.

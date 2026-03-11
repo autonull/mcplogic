@@ -76,7 +76,9 @@ export function clausify(formula: string | ASTNode, options: ClausifyOptions = {
         if (opts.strategy === 'tseitin') {
             clauses = toCNFTseitin(quantifierFree, skolemEnv);
         } else {
-            clauses = toCNF(quantifierFree, opts, startTime);
+            // Ensure skolemEnv is present for Required<ClausifyOptions>
+            const fullOpts = { ...opts, skolemEnv };
+            clauses = toCNF(quantifierFree, fullOpts, startTime);
         }
 
         // Filter tautologies

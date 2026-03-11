@@ -4,7 +4,7 @@ import { buildProveResult } from '../../utils/response.js';
 import { parse } from '../../parser/index.js';
 import { createNot } from '../../ast/index.js';
 import { Z3Translator } from './translator.js';
-import { Z3Context, Z3Solver } from './types.js';
+import { Z3Context, Z3Solver, Z3Bool } from './types.js';
 
 export class Z3Session implements EngineSession {
     private ctx: Z3Context;
@@ -29,7 +29,7 @@ export class Z3Session implements EngineSession {
         try {
             const node = parse(formula);
             const z3Expr = this.translator.translate(node);
-            this.solver.add(z3Expr);
+            this.solver.add(z3Expr as unknown as Z3Bool);
         } catch (e) {
             throw createEngineError(`Z3 Assert Error: ${e instanceof Error ? e.message : String(e)}`);
         }
@@ -69,7 +69,7 @@ export class Z3Session implements EngineSession {
             const negatedConclusion = createNot(conclusionNode);
             const z3NegConclusion = this.translator.translate(negatedConclusion);
 
-            this.solver.add(z3NegConclusion);
+            this.solver.add(z3NegConclusion as unknown as Z3Bool);
 
             const check = await this.solver.check();
 
@@ -117,9 +117,7 @@ export class Z3Session implements EngineSession {
 
     async close(): Promise<void> {
         if (this.solver) {
-            if (typeof this.solver.delete === 'function') {
-                this.solver.delete();
-            }
+            // Context handles cleanup
             this.solver = null;
         }
     }

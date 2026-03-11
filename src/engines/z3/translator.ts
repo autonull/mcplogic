@@ -1,6 +1,6 @@
 import { ASTNode } from '../../types/ast.js';
 import { isArithmeticOperator, isArithmeticPredicate } from '../../axioms/arithmetic.js';
-import { Z3Context, Z3Expr, Z3Bool, Z3Int } from './types.js';
+import { Z3Context, Z3Expr, Z3Bool, Z3Arith } from './types.js';
 
 export interface Z3TranslationOptions {
     enableArithmetic?: boolean;
@@ -9,7 +9,7 @@ export interface Z3TranslationOptions {
 
 export class Z3Translator {
     private ctx: Z3Context;
-    private sort: any; // The domain sort (Int or Uninterpreted)
+    private sort: any; // The domain sort
     private options: Z3TranslationOptions;
 
     // Symbol tables
@@ -24,11 +24,9 @@ export class Z3Translator {
         this.ctx = ctx;
         this.options = options;
 
-        // Define the universal sort
         if (this.options.enableArithmetic) {
             this.sort = this.ctx.Int.sort();
         } else {
-            // Use Sort.declare for uninterpreted sort
             this.sort = this.ctx.Sort.declare('U');
         }
     }
@@ -36,13 +34,22 @@ export class Z3Translator {
     translate(node: ASTNode): Z3Expr {
         switch (node.type) {
             case 'and':
-                return this.ctx.And(this.translate(node.left!), this.translate(node.right!));
+                return this.ctx.And(
+                    this.translate(node.left!) as unknown as Z3Bool,
+                    this.translate(node.right!) as unknown as Z3Bool
+                );
             case 'or':
-                return this.ctx.Or(this.translate(node.left!), this.translate(node.right!));
+                return this.ctx.Or(
+                    this.translate(node.left!) as unknown as Z3Bool,
+                    this.translate(node.right!) as unknown as Z3Bool
+                );
             case 'not':
-                return this.ctx.Not(this.translate(node.operand!));
+                return this.ctx.Not(this.translate(node.operand!) as unknown as Z3Bool);
             case 'implies':
-                return this.ctx.Implies(this.translate(node.left!), this.translate(node.right!));
+                return this.ctx.Implies(
+                    this.translate(node.left!) as unknown as Z3Bool,
+                    this.translate(node.right!) as unknown as Z3Bool
+                );
             case 'iff':
                 return this.ctx.Eq(this.translate(node.left!), this.translate(node.right!));
             case 'equals':
@@ -71,36 +78,34 @@ export class Z3Translator {
 
     private translateQuantifier(node: ASTNode): Z3Expr {
         const varName = node.variable!;
-
-        // Create a fresh bound variable
-        // Use string name directly if Symbol is not available or not required
+        // Use Const for bound variable definition in quantifiers
         const z3Var = this.ctx.Const(varName, this.sort);
 
-        // Push to scope
         const prev = this.boundVars.get(varName);
         this.boundVars.set(varName, z3Var);
 
-        const body = this.translate(node.body!);
+        const body = this.translate(node.body!) as unknown as Z3Bool;
 
-        // Pop scope
         if (prev) this.boundVars.set(varName, prev);
         else this.boundVars.delete(varName);
 
+        // ForAll/Exists expects array of Consts
+        // We cast to any because strict types might expect specific Sort parameters
         if (node.type === 'forall') {
-            return this.ctx.ForAll([z3Var], body);
+            return this.ctx.ForAll([z3Var as any], body);
         } else {
-            return this.ctx.Exists([z3Var], body);
+            return this.ctx.Exists([z3Var as any], body);
         }
     }
 
     private translatePredicate(node: ASTNode): Z3Expr {
         const name = node.name!;
-        const args = node.args!.map(arg => this.translate(arg));
+        const args = (node.args || []).map(arg => this.translate(arg));
 
         // Handle arithmetic predicates
         if (this.options.enableArithmetic && isArithmeticPredicate(name)) {
-            const left = args[0];
-            const right = args[1];
+            const left = args[0] as unknown as Z3Arith;
+            const right = args[1] as unknown as Z3Arith;
             switch (name) {
                 case 'lt': case 'less': return this.ctx.LT(left, right);
                 case 'gt': case 'greater': return this.ctx.GT(left, right);
@@ -109,14 +114,13 @@ export class Z3Translator {
             }
         }
 
-        // Standard predicate
         if (args.length === 0) {
             return this.ctx.Bool.const(name);
         }
 
         if (!this.predicates.has(name)) {
-            // Declare it using ctx.Function.declare
             const domain = args.map(() => this.sort);
+            // Function.declare(name, ...domain, range)
             const decl = this.ctx.Function.declare(name, ...domain, this.ctx.Bool.sort());
             this.predicates.set(name, decl);
         }
@@ -127,26 +131,23 @@ export class Z3Translator {
 
     private translateFunction(node: ASTNode): Z3Expr {
         const name = node.name!;
-        const args = node.args!.map(arg => this.translate(arg));
+        const args = (node.args || []).map(arg => this.translate(arg));
 
         // Handle arithmetic functions
         if (this.options.enableArithmetic && isArithmeticOperator(name)) {
-            const left = args[0];
-            const right = args[1];
+             const left = args[0] as unknown as Z3Arith;
+             const right = args[1] as unknown as Z3Arith;
              switch (name) {
                 case 'plus': case 'add': return this.ctx.Sum(left, right);
                 case 'minus': case 'sub': return this.ctx.Sub(left, right);
                 case 'times': case 'mul': return this.ctx.Product(left, right);
                 case 'divide': case 'div': return this.ctx.Div(left, right);
-            }
-            if (name === 'mod') {
-                return this.ctx.Mod(left, right);
+                case 'mod': return this.ctx.Mod(left as any, right as any); // Mod might expect Int specifically
             }
         }
 
-        // Standard function
         if (args.length === 0) {
-            return this.ctx.Const(name, this.sort);
+            return this.translateConstant(node);
         }
 
         if (!this.functions.has(name)) {
@@ -161,20 +162,15 @@ export class Z3Translator {
 
     private translateVariable(node: ASTNode): Z3Expr {
         const name = node.name!;
-
-        // Check if bound
         if (this.boundVars.has(name)) {
             return this.boundVars.get(name)!;
         }
-
-        // Free variable -> Constant
         return this.translateConstant(node);
     }
 
     private translateConstant(node: ASTNode): Z3Expr {
         const name = node.name!;
 
-        // Numeric constant?
         if (this.options.enableArithmetic && /^-?\d+$/.test(name)) {
             return this.ctx.Int.val(parseInt(name, 10));
         }
@@ -184,6 +180,6 @@ export class Z3Translator {
             this.constants.set(name, c);
         }
 
-        return this.constants.get(name);
+        return this.constants.get(name)!;
     }
 }

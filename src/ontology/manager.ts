@@ -127,4 +127,16 @@ export class OntologyManager {
             synonyms: new Map(this.ontology.synonyms),
         };
     }
+
+    /**
+     * Returns the current ontology configuration.
+     */
+    getConfig(): OntologyConfig {
+        return {
+            types: Array.from(this.ontology.types),
+            relationships: Array.from(this.ontology.relationships),
+            constraints: Array.from(this.ontology.constraints),
+            synonyms: Object.fromEntries(this.ontology.synonyms),
+        };
+    }
 }

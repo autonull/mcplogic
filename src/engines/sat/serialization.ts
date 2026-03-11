@@ -7,6 +7,8 @@
 
 import { Literal } from '../../types/clause.js';
 import { astToString } from '../../ast/index.js';
+import { parse } from '../../parser/index.js';
+import { ASTNode } from '../../types/ast.js';
 
 /**
  * Convert a literal to a unique string key.
@@ -30,25 +32,33 @@ export interface ParsedKey {
 
 /**
  * Parse a SAT key back into predicate and argument strings.
- * Note: Arguments are returned as strings (e.g. "a", "f(x)").
+ * Uses the parser for robustness against nested terms.
  */
 export function parseKey(key: string): ParsedKey | null {
-    const m = key.match(/^(\w+)(?:\(([^)]*)\))?$/);
-    if (!m) return null;
-
-    const [, pred, argsStr] = m;
-
-    // Split args by comma, respecting nested parens if we were doing full parsing,
-    // but here we expect ground terms which might just be constants.
-    // If we have f(a,b), splitting by comma is risky if args contain commas.
-    // However, in current grounding, args are usually simple constants.
-    // If we want to be robust we should use a proper parser or ensuring args don't contain commas.
-    // Given the context of "Level 0" instantiation where args are constants, simple split is okay for now.
-
-    const args = argsStr ? argsStr.split(',').map(s => s.trim()) : [];
-
-    return {
-        predicate: pred,
-        args
-    };
+    try {
+        const ast = parse(key);
+        if (ast.type === 'predicate') {
+            return {
+                predicate: ast.name!,
+                args: (ast.args || []).map(astToString)
+            };
+        } else if (ast.type === 'function') {
+            // Sometimes parser might see it as function if predicate context isn't clear?
+            // But usually top-level is predicate.
+            return {
+                predicate: ast.name!,
+                args: (ast.args || []).map(astToString)
+            };
+        } else if (ast.type === 'constant') {
+             // 0-arity predicate
+             return {
+                 predicate: ast.name!,
+                 args: []
+             };
+        }
+        return null;
+    } catch (e) {
+        // Fallback or fail
+        return null;
+    }
 }

@@ -12,19 +12,36 @@ export function toNNF(node: ASTNode): ASTNode {
     switch (node.type) {
         case 'iff': {
             // A ↔ B → (A → B) ∧ (B → A)
+            // But better expansion for NNF: (¬A ∨ B) ∧ (¬B ∨ A)
             const left = node.left!;
             const right = node.right!;
-            const impl1: ASTNode = { type: 'implies', left, right };
-            const impl2: ASTNode = { type: 'implies', left: right, right: left };
-            return toNNF({ type: 'and', left: impl1, right: impl2 });
+
+            // ¬A ∨ B
+            const c1 = {
+                type: 'or',
+                left: pushNegation(left), // ¬A
+                right: toNNF(right)       // B
+            } as ASTNode;
+
+            // ¬B ∨ A
+            const c2 = {
+                type: 'or',
+                left: pushNegation(right), // ¬B
+                right: toNNF(left)         // A
+            } as ASTNode;
+
+            return { type: 'and', left: c1, right: c2 };
         }
 
         case 'implies': {
             // A → B → ¬A ∨ B
             const left = node.left!;
             const right = node.right!;
-            const negLeft: ASTNode = { type: 'not', operand: left };
-            return toNNF({ type: 'or', left: negLeft, right });
+            return {
+                type: 'or',
+                left: pushNegation(left), // ¬A
+                right: toNNF(right)       // B
+            };
         }
 
         case 'not': {
@@ -74,75 +91,83 @@ export function toNNF(node: ASTNode): ASTNode {
 
 /**
  * Push a negation inward (De Morgan's laws, quantifier negation).
+ * Used when we encounter `not(node)` and want to push the `not` down.
  */
 function pushNegation(node: ASTNode): ASTNode {
     switch (node.type) {
         case 'not':
             // Double negation elimination: ¬¬A → A
+            // But we must ensure A is also in NNF
             return toNNF(node.operand!);
 
         case 'and':
             // De Morgan: ¬(A ∧ B) → ¬A ∨ ¬B
-            return toNNF({
+            return {
                 type: 'or',
-                left: { type: 'not', operand: node.left! },
-                right: { type: 'not', operand: node.right! },
-            });
+                left: pushNegation(node.left!),
+                right: pushNegation(node.right!),
+            };
 
         case 'or':
             // De Morgan: ¬(A ∨ B) → ¬A ∧ ¬B
-            return toNNF({
+            return {
                 type: 'and',
-                left: { type: 'not', operand: node.left! },
-                right: { type: 'not', operand: node.right! },
-            });
+                left: pushNegation(node.left!),
+                right: pushNegation(node.right!),
+            };
 
         case 'implies':
             // ¬(A → B) → A ∧ ¬B
-            return toNNF({
+            return {
                 type: 'and',
-                left: node.left!,
-                right: { type: 'not', operand: node.right! },
-            });
+                left: toNNF(node.left!),      // A
+                right: pushNegation(node.right!), // ¬B
+            };
 
         case 'iff':
             // ¬(A ↔ B) → (A ∧ ¬B) ∨ (¬A ∧ B)
-            return toNNF({
-                type: 'or',
-                left: {
-                    type: 'and',
-                    left: node.left!,
-                    right: { type: 'not', operand: node.right! },
-                },
-                right: {
-                    type: 'and',
-                    left: { type: 'not', operand: node.left! },
-                    right: node.right!,
-                },
-            });
+            const left = node.left!;
+            const right = node.right!;
+
+            // A ∧ ¬B
+            const d1 = {
+                type: 'and',
+                left: toNNF(left),
+                right: pushNegation(right)
+            } as ASTNode;
+
+            // ¬A ∧ B
+            const d2 = {
+                type: 'and',
+                left: pushNegation(left),
+                right: toNNF(right)
+            } as ASTNode;
+
+            return { type: 'or', left: d1, right: d2 };
 
         case 'forall':
             // ¬∀x.P → ∃x.¬P
-            return toNNF({
+            return {
                 type: 'exists',
                 variable: node.variable,
-                body: { type: 'not', operand: node.body! },
-            });
+                body: pushNegation(node.body!),
+            };
 
         case 'exists':
             // ¬∃x.P → ∀x.¬P
-            return toNNF({
+            return {
                 type: 'forall',
                 variable: node.variable,
-                body: { type: 'not', operand: node.body! },
-            });
+                body: pushNegation(node.body!),
+            };
 
         case 'predicate':
         case 'equals':
-            // Negation on atom - this is NNF
+            // Atomic negation: this is the base case for NNF
             return { type: 'not', operand: node };
 
         default:
+            // For other atomic types (should not be negated directly ideally)
             return { type: 'not', operand: node };
     }
 }

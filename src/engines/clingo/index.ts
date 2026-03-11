@@ -1,4 +1,4 @@
-import clingo from 'clingo-wasm';
+import * as clingoWasm from 'clingo-wasm';
 import { ReasoningEngine, EngineCapabilities, EngineProveOptions, SatResult, EngineSession } from '../interface.js';
 import { ProveResult, createEngineError } from '../../types/index.js';
 import { buildProveResult } from '../../utils/response.js';
@@ -24,7 +24,17 @@ export class ClingoEngine implements ReasoningEngine {
     async init(): Promise<void> {
         if (this.initialized) return;
         try {
-            await clingo.init();
+            // Handle module resolution differences
+            const clingo = (clingoWasm as any).default || clingoWasm;
+
+            // Check if we are in a browser environment
+            if (typeof window !== 'undefined' && typeof window.document !== 'undefined') {
+                // In browser, we need to locate the wasm file
+                await (clingo.init as any)('/vendor/clingo-wasm/clingo.wasm');
+            } else {
+                // In Node, init takes no arguments or handles it internally
+                await (clingo.init as any)();
+            }
             this.initialized = true;
         } catch (e) {
             throw createEngineError(`Failed to initialize Clingo: ${e}`);
@@ -74,6 +84,8 @@ export class ClingoEngine implements ReasoningEngine {
             // 4. Run Clingo
             // We want to find if there are ANY models.
             // run(program: string, models?: number, options?: string[])
+            // Resolve clingo object again for usage
+            const clingo = (clingoWasm as any).default || clingoWasm;
             const result = await clingo.run(aspProgram, 1);
 
             // 5. Interpret result
@@ -139,6 +151,7 @@ export class ClingoEngine implements ReasoningEngine {
             if (!this.initialized) await this.init();
 
             const aspProgram = clausesToASP(clauses);
+            const clingo = (clingoWasm as any).default || clingoWasm;
             const result = await clingo.run(aspProgram, 1);
 
             if (result.Result === 'SATISFIABLE') {

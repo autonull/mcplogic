@@ -115,8 +115,6 @@ export class EngineManager {
             const res = await engine.prove(premises, conclusion, options);
             return { ...res, engineUsed: engine.name };
         } catch (e) {
-            // If selection fails or engine fails, we might want to try fallback?
-            // For now, return error
             return {
                 success: false,
                 result: 'error',
@@ -135,44 +133,44 @@ export class EngineManager {
         conclusion: string,
         options?: ManagerProveOptions
     ): Promise<ProveResult & { engineUsed?: string }> {
-        const engines = [
-            this.getEngine('z3'),
-            this.getEngine('prolog'),
-            this.getEngine('sat')
-        ];
+        const engineNames = ['z3', 'prolog', 'sat', 'clingo'];
 
-        // Add clingo if not explicitly excluded or unavailable (it's always available via WASM but might be slow to init)
-        // For race, we just try all standard ones.
-
-        const promises = engines.map(async (enginePromise) => {
+        const promises = engineNames.map(async (name) => {
             try {
-                const engine = await enginePromise;
-                // Basic capability check (skip SAT if arithmetic needed, though SAT handles it poorly rather than crashing)
-                // Actually, just let them fail.
+                const engine = await this.getEngine(name);
                 const res = await engine.prove(premises, conclusion, options);
-                return { ...res, engineUsed: engine.name };
-            } catch (e) {
-                // If an engine fails, we return a failed result but don't reject,
-                // so Promise.any/race can ignore it unless all fail.
-                // However, Promise.race returns the *first* settled, even rejection.
-                // We want Promise.any behavior (first success), but Promise.any waits for all rejections if none succeed.
 
-                // Let's implement a custom race where we ignore failures unless all fail.
+                // If the result is definitive (proved, failed/counterexample), return it.
+                // If it's a timeout or error, throw so Promise.any keeps looking.
+                if (res.result === 'proved' || res.result === 'failed') {
+                    return { ...res, engineUsed: engine.name };
+                }
+
+                throw new Error(res.error || res.message || `${name} failed to find definitive result`);
+            } catch (e) {
+                // Reject to let Promise.any try others
                 throw e;
             }
         });
 
-        // We want the first *successful* result (proved or disproved/counterexample), ignoring errors/timeouts.
-        // If all timeout/error, return one of the errors.
-
         try {
             return await Promise.any(promises);
         } catch (e) {
-            // Aggregate errors
+            // All engines failed/timed out
+            let errorMsg = 'All engines failed in race mode';
+
+            // Check if it's an AggregateError (standard in ES2021)
+            if (e instanceof Error && 'errors' in e && Array.isArray((e as any).errors)) {
+                 const errors = (e as any).errors as Error[];
+                 errorMsg = `All engines failed: ${errors.map(err => err.message).join('; ')}`;
+            } else if (e instanceof Error) {
+                errorMsg = e.message;
+            }
+
             return {
                 success: false,
                 result: 'error',
-                error: 'All engines failed in race mode',
+                error: errorMsg,
                 engineUsed: 'race',
                 found: false
             };
@@ -288,6 +286,10 @@ export class EngineManager {
             name: entry.actualName,
             capabilities: entry.capabilities
         }));
+    }
+
+    async close(): Promise<void> {
+        await this.registry.close();
     }
 }
 

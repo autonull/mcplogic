@@ -6,7 +6,7 @@ import { createNot } from '../../ast/index.js';
 import { clausify } from '../../logic/clausifier.js';
 import { SkolemEnv } from '../../types/clause.js';
 import { clausesToASP } from './translator.js';
-import clingo from 'clingo-wasm';
+import * as clingoWasm from 'clingo-wasm';
 
 export class ClingoSession implements EngineSession {
     private program: string = '';
@@ -24,7 +24,12 @@ export class ClingoSession implements EngineSession {
 
     async init() {
         if (!this.initialized) {
-            await clingo.init();
+            const clingo = (clingoWasm as any).default || clingoWasm;
+            if (typeof window !== 'undefined' && typeof window.document !== 'undefined') {
+                await (clingo.init as any)('/vendor/clingo-wasm/clingo.wasm');
+            } else {
+                await (clingo.init as any)();
+            }
             this.initialized = true;
         }
     }
@@ -79,6 +84,7 @@ export class ClingoSession implements EngineSession {
 
             // Run Clingo
             // run(program: string, models?: number, options?: string[])
+            const clingo = (clingoWasm as any).default || clingoWasm;
             const runResult = await clingo.run(fullProgram, 1);
 
             if (runResult.Result === 'SATISFIABLE') {

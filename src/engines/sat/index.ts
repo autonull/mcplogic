@@ -50,6 +50,11 @@ export class SATEngine implements ReasoningEngine {
         return new SATSession();
     }
 
+    async close(): Promise<void> {
+        // No cleanup needed for SAT engine
+        return Promise.resolve();
+    }
+
     /**
      * Check satisfiability of clauses using the SAT solver.
      */

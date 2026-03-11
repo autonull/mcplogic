@@ -65,6 +65,8 @@ export interface SatResult {
         variables?: number;
         clauses?: number;
     };
+    /** Error message if something went wrong */
+    error?: string;
 }
 
 /**
@@ -139,4 +141,9 @@ export interface ReasoningEngine {
      * Optional initialization for lazy-loaded engines (e.g., WASM modules).
      */
     init?(): Promise<void>;
+
+    /**
+     * Optional cleanup for resources (e.g. WASM contexts).
+     */
+    close?(): Promise<void>;
 }

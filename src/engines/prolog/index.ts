@@ -57,6 +57,11 @@ export class PrologEngine implements ReasoningEngine {
         return new PrologSession(this.inferenceLimit);
     }
 
+    async close(): Promise<void> {
+        // No cleanup needed for Prolog engine
+        return Promise.resolve();
+    }
+
     /**
      * Prove a conclusion from premises using Prolog resolution.
      */

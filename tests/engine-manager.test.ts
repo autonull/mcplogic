@@ -15,6 +15,10 @@ describe('EngineManager', () => {
         manager = createEngineManager();
     });
 
+    afterEach(async () => {
+        await manager.close();
+    });
+
     describe('engine access', () => {
         it('should provide access to Prolog engine', async () => {
             const prolog = await manager.getPrologEngine();

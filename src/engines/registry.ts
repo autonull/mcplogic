@@ -24,8 +24,8 @@ export class EngineRegistry {
             capabilities: {
                 horn: true,
                 fullFol: false,
-                equality: false,
-                arithmetic: false,
+                equality: true,
+                arithmetic: true,
                 streaming: false
             },
             actualName: 'prolog/tau-prolog'
@@ -99,5 +99,17 @@ export class EngineRegistry {
 
     getEntries(): [string, EngineEntry][] {
         return Array.from(this.registry.entries());
+    }
+
+    async close(): Promise<void> {
+        for (const entry of this.registry.values()) {
+            if (entry.instance && entry.instance.close) {
+                try {
+                    await entry.instance.close();
+                } catch (e) {
+                    console.warn(`Error closing engine ${entry.actualName}:`, e);
+                }
+            }
+        }
     }
 }

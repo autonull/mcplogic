@@ -129,7 +129,7 @@ export class SessionManager {
             lastAccessedAt: session.lastAccessedAt,
             ttlMs: session.ttlMs,
             engineName: session.engineName,
-            ontologyConfig: session.ontology?.config // Assuming we can access config or recreate it
+            ontologyConfig: session.ontology?.getConfig()
         };
 
         try {

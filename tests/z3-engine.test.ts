@@ -7,6 +7,10 @@ describe('Z3Engine', () => {
         engine = new Z3Engine();
     });
 
+    afterEach(async () => {
+        await engine.close();
+    });
+
     test('proves simple implication', async () => {
         const result = await engine.prove(
             ['p -> q', 'p'],
