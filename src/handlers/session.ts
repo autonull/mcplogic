@@ -36,13 +36,13 @@ export function createSessionHandler(
     };
 }
 
-export function assertPremiseHandler(
+export async function assertPremiseHandler(
     args: {
         session_id: string;
         formula: string;
     },
     sessionManager: SessionManager
-): object {
+): Promise<object> {
     const { session_id, formula } = args;
 
     // Validate formula syntax first
@@ -55,7 +55,7 @@ export function assertPremiseHandler(
         };
     }
 
-    const session = sessionManager.assertPremise(session_id, formula);
+    const session = await sessionManager.assertPremise(session_id, formula);
     return {
         success: true,
         session_id: session.id,
@@ -84,7 +84,32 @@ export async function querySessionHandler(
 
     const session = sessionManager.get(session_id);
 
-    // Use engineManager for consistent engine selection
+    // If session has an active engine session, prefer it?
+    // But engineManager.prove is stateless/creates new session.
+    // If we want to use the session's incremental state, we should use session.engineSession.prove().
+    // However, engineManager.prove handles engine selection logic.
+    // Given the architecture, maybe we should stick to engineManager.prove for now,
+    // BUT pass the session's engine preference if available?
+
+    // Wait, if we use engineManager.prove(session.premises, goal), we are ignoring the incremental state
+    // built in session.engineSession.
+    // If Z3/Clingo session is active, we SHOULD use it.
+
+    if (session.engineSession) {
+        try {
+            const proveResult = await session.engineSession.prove(goal, { verbosity });
+            return {
+                session_id: session.id,
+                premise_count: session.premises.length,
+                ...buildProveResponse(proveResult, verbosity),
+            };
+        } catch (e) {
+             // Fallback to stateless prove if session prove fails?
+             console.warn(`Session prove failed on ${session.engineName}, falling back to stateless...`, e);
+        }
+    }
+
+    // Fallback or if no session engine active
     const proveResult = await engineManager.prove(session.premises, goal, { verbosity });
     return {
         session_id: session.id,
@@ -93,16 +118,16 @@ export async function querySessionHandler(
     };
 }
 
-export function retractPremiseHandler(
+export async function retractPremiseHandler(
     args: {
         session_id: string;
         formula: string;
     },
     sessionManager: SessionManager
-): object {
+): Promise<object> {
     const { session_id, formula } = args;
 
-    const removed = sessionManager.retractPremise(session_id, formula);
+    const removed = await sessionManager.retractPremise(session_id, formula);
     const session = sessionManager.get(session_id);
 
     return {
@@ -136,13 +161,13 @@ export function listPremisesHandler(
     };
 }
 
-export function clearSessionHandler(
+export async function clearSessionHandler(
     args: { session_id: string },
     sessionManager: SessionManager
-): object {
+): Promise<object> {
     const { session_id } = args;
 
-    const session = sessionManager.clear(session_id);
+    const session = await sessionManager.clear(session_id);
 
     return {
         success: true,
@@ -152,13 +177,13 @@ export function clearSessionHandler(
     };
 }
 
-export function deleteSessionHandler(
+export async function deleteSessionHandler(
     args: { session_id: string },
     sessionManager: SessionManager
-): object {
+): Promise<object> {
     const { session_id } = args;
 
-    sessionManager.delete(session_id);
+    await sessionManager.delete(session_id);
 
     return {
         success: true,

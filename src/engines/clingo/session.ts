@@ -128,4 +128,8 @@ export class ClingoSession implements EngineSession {
             }, verbosity);
         }
     }
+
+    async close(): Promise<void> {
+        // No cleanup needed for Clingo session (pure string state)
+    }
 }

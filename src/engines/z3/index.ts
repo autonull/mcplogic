@@ -7,6 +7,7 @@ import { createNot } from '../../ast/index.js';
 import { Z3Translator } from './translator.js';
 import { Clause } from '../../types/clause.js';
 import { Z3Session } from './session.js';
+import { Z3Context, Z3Solver } from './types.js';
 
 export class Z3Engine implements ReasoningEngine {
     readonly name = 'z3';
@@ -18,17 +19,16 @@ export class Z3Engine implements ReasoningEngine {
         streaming: false,
     };
 
-    private Z3: any; // The Z3 module
-    private Context: any; // The Context class
-    private ctx: any; // The Z3 Context instance
+    private ctx: Z3Context | null = null;
 
     async init(): Promise<void> {
         if (this.ctx) return;
 
         try {
             const { Context } = await init();
-            this.Context = Context;
-            this.ctx = new Context('main');
+            // Context constructor requires a generic type parameter in recent versions,
+            // but the `init` function returns a Context constructor that we can instantiate.
+            this.ctx = new Context('main') as unknown as Z3Context;
         } catch (e) {
             throw createEngineError(`Failed to initialize Z3: ${e}`);
         }
@@ -36,12 +36,7 @@ export class Z3Engine implements ReasoningEngine {
 
     async createSession(): Promise<EngineSession> {
         if (!this.ctx) await this.init();
-        // Create a new session sharing the Context (or maybe a fresh context?)
-        // Sharing context allows sharing symbols? Z3Py usually uses one context.
-        // But if sessions run in parallel, sharing context might be thread-unsafe if not careful?
-        // JS is single threaded. Z3 WASM is likely single threaded.
-        // Sharing context is fine.
-        return new Z3Session(this.ctx);
+        return new Z3Session(this.ctx!);
     }
 
     async prove(
@@ -52,12 +47,13 @@ export class Z3Engine implements ReasoningEngine {
         const startTime = Date.now();
         const verbosity = options?.verbosity || 'standard';
         const timeoutMs = (options?.maxSeconds || 10) * 1000;
+        let solver: Z3Solver | null = null;
 
         try {
             if (!this.ctx) await this.init();
 
             // Create a solver
-            const solver = new this.ctx.Solver();
+            solver = new this.ctx!.Solver() as unknown as Z3Solver;
 
             // Configure solver parameters (timeout)
             // Z3 params are set via solver.set() or global config?
@@ -155,13 +151,16 @@ export class Z3Engine implements ReasoningEngine {
                  this.ctx = null;
              }
 
-             console.error('Z3 Proof Error:', error); // Debug logging
              return buildProveResult({
                 success: false,
                 result: 'error',
                 error: `Z3 Error: ${error}`,
                 timeMs: Date.now() - startTime,
             }, verbosity);
+        } finally {
+            if (solver && typeof solver.delete === 'function') {
+                solver.delete();
+            }
         }
     }
 
@@ -173,10 +172,11 @@ export class Z3Engine implements ReasoningEngine {
         // I'll implement a basic version.
 
         const startTime = Date.now();
+        let solver: Z3Solver | null = null;
         try {
             if (!this.ctx) await this.init();
 
-            const solver = new this.ctx.Solver();
+            solver = new this.ctx!.Solver() as unknown as Z3Solver;
             // TODO: Convert clauses to Z3
             // This requires mapping logic-solver Clause objects to Z3 AST.
             // Skipping for now as the main goal is 'prove'.
@@ -189,6 +189,10 @@ export class Z3Engine implements ReasoningEngine {
                 sat: false,
                 statistics: { timeMs: Date.now() - startTime }
             };
+        } finally {
+            if (solver && typeof solver.delete === 'function') {
+                solver.delete();
+            }
         }
     }
 }

@@ -36,4 +36,8 @@ export class PrologSession implements EngineSession {
         // for a logical session where assertions can change the derived rules (rewrites).
         return this.engine.prove(this.premises, conclusion, options);
     }
+
+    async close(): Promise<void> {
+        // No cleanup needed for Prolog session (pure JS)
+    }
 }

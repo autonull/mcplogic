@@ -12,9 +12,9 @@ describe('SessionManager', () => {
         manager = createSessionManager();
     });
 
-    afterEach(() => {
+    afterEach(async () => {
         manager.stop();
-        manager.clearAll();
+        await manager.clearAll();
     });
 
     describe('create', () => {
@@ -87,77 +87,77 @@ describe('SessionManager', () => {
     });
 
     describe('delete', () => {
-        test('deletes existing session', () => {
+        test('deletes existing session', async () => {
             const session = manager.create();
-            const result = manager.delete(session.id);
+            const result = await manager.delete(session.id);
 
             expect(result).toBe(true);
             expect(manager.exists(session.id)).toBe(false);
         });
 
-        test('throws for non-existent session', () => {
-            expect(() => manager.delete('non-existent')).toThrow(LogicException);
+        test('throws for non-existent session', async () => {
+            await expect(manager.delete('non-existent')).rejects.toThrow(LogicException);
         });
     });
 
     describe('assertPremise', () => {
-        test('adds premise to session', () => {
+        test('adds premise to session', async () => {
             const session = manager.create();
-            manager.assertPremise(session.id, 'man(socrates)');
+            await manager.assertPremise(session.id, 'man(socrates)');
 
             expect(session.premises).toContain('man(socrates)');
             expect(session.prologProgram).toContain('man(socrates)');
         });
 
-        test('accumulates multiple premises', () => {
+        test('accumulates multiple premises', async () => {
             const session = manager.create();
-            manager.assertPremise(session.id, 'man(socrates)');
-            manager.assertPremise(session.id, 'all x (man(x) -> mortal(x))');
+            await manager.assertPremise(session.id, 'man(socrates)');
+            await manager.assertPremise(session.id, 'all x (man(x) -> mortal(x))');
 
             expect(session.premises).toHaveLength(2);
         });
 
-        test('throws for non-existent session', () => {
-            expect(() => manager.assertPremise('bad-id', 'P(x)')).toThrow(LogicException);
+        test('throws for non-existent session', async () => {
+            await expect(manager.assertPremise('bad-id', 'P(x)')).rejects.toThrow(LogicException);
         });
     });
 
     describe('retractPremise', () => {
-        test('removes existing premise', () => {
+        test('removes existing premise', async () => {
             const session = manager.create();
-            manager.assertPremise(session.id, 'man(socrates)');
-            manager.assertPremise(session.id, 'man(plato)');
+            await manager.assertPremise(session.id, 'man(socrates)');
+            await manager.assertPremise(session.id, 'man(plato)');
 
-            const removed = manager.retractPremise(session.id, 'man(socrates)');
+            const removed = await manager.retractPremise(session.id, 'man(socrates)');
 
             expect(removed).toBe(true);
             expect(session.premises).not.toContain('man(socrates)');
             expect(session.premises).toContain('man(plato)');
         });
 
-        test('returns false for non-existent premise', () => {
+        test('returns false for non-existent premise', async () => {
             const session = manager.create();
-            manager.assertPremise(session.id, 'man(socrates)');
+            await manager.assertPremise(session.id, 'man(socrates)');
 
-            const removed = manager.retractPremise(session.id, 'man(plato)');
+            const removed = await manager.retractPremise(session.id, 'man(plato)');
 
             expect(removed).toBe(false);
         });
 
-        test('updates Prolog program after retract', () => {
+        test('updates Prolog program after retract', async () => {
             const session = manager.create();
-            manager.assertPremise(session.id, 'man(socrates)');
-            manager.retractPremise(session.id, 'man(socrates)');
+            await manager.assertPremise(session.id, 'man(socrates)');
+            await manager.retractPremise(session.id, 'man(socrates)');
 
             expect(session.prologProgram).not.toContain('man(socrates)');
         });
     });
 
     describe('listPremises', () => {
-        test('returns copy of premises', () => {
+        test('returns copy of premises', async () => {
             const session = manager.create();
-            manager.assertPremise(session.id, 'P(a)');
-            manager.assertPremise(session.id, 'Q(b)');
+            await manager.assertPremise(session.id, 'P(a)');
+            await manager.assertPremise(session.id, 'Q(b)');
 
             const premises = manager.listPremises(session.id);
 
@@ -169,12 +169,12 @@ describe('SessionManager', () => {
     });
 
     describe('clear', () => {
-        test('clears all premises but keeps session', () => {
+        test('clears all premises but keeps session', async () => {
             const session = manager.create();
-            manager.assertPremise(session.id, 'P(a)');
-            manager.assertPremise(session.id, 'Q(b)');
+            await manager.assertPremise(session.id, 'P(a)');
+            await manager.assertPremise(session.id, 'Q(b)');
 
-            manager.clear(session.id);
+            await manager.clear(session.id);
 
             expect(session.premises).toEqual([]);
             expect(session.prologProgram).toBe('');
@@ -197,7 +197,7 @@ describe('SessionManager', () => {
     });
 
     describe('count', () => {
-        test('tracks session count', () => {
+        test('tracks session count', async () => {
             expect(manager.count).toBe(0);
 
             const s1 = manager.create();
@@ -206,7 +206,7 @@ describe('SessionManager', () => {
             manager.create();
             expect(manager.count).toBe(2);
 
-            manager.delete(s1.id);
+            await manager.delete(s1.id);
             expect(manager.count).toBe(1);
         });
     });
@@ -219,31 +219,31 @@ describe('Session workflow', () => {
         manager = createSessionManager();
     });
 
-    afterEach(() => {
+    afterEach(async () => {
         manager.stop();
-        manager.clearAll();
+        await manager.clearAll();
     });
 
-    test('full workflow: create -> assert -> list -> clear -> delete', () => {
+    test('full workflow: create -> assert -> list -> clear -> delete', async () => {
         // Create
         const session = manager.create();
         expect(session.id).toBeDefined();
 
         // Assert premises
-        manager.assertPremise(session.id, 'all x (man(x) -> mortal(x))');
-        manager.assertPremise(session.id, 'man(socrates)');
+        await manager.assertPremise(session.id, 'all x (man(x) -> mortal(x))');
+        await manager.assertPremise(session.id, 'man(socrates)');
 
         // List
         const premises = manager.listPremises(session.id);
         expect(premises).toHaveLength(2);
 
         // Clear
-        manager.clear(session.id);
+        await manager.clear(session.id);
         expect(manager.listPremises(session.id)).toHaveLength(0);
         expect(manager.exists(session.id)).toBe(true);
 
         // Delete
-        manager.delete(session.id);
+        await manager.delete(session.id);
         expect(manager.exists(session.id)).toBe(false);
     });
 });

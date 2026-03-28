@@ -62,6 +62,8 @@ export interface ClausifyOptions {
     strategy?: 'standard' | 'tseitin';
     /** Optional existing Skolem environment to maintain consistent function names across calls */
     skolemEnv?: SkolemEnv;
+    /** Internal node count for OOM protection */
+    _nodeCount?: number;
 }
 
 /**

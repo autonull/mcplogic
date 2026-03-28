@@ -1,6 +1,6 @@
 import { ASTNode } from '../../types/index.js';
 import { ClausifyOptions } from '../../types/clause.js';
-import { createTimeoutError } from '../../types/errors.js';
+import { createTimeoutError, createGenericError } from '../../types/errors.js';
 
 /**
  * Distribute OR over AND to achieve CNF.
@@ -14,6 +14,12 @@ export function distribute(
     // Check timeout
     if (Date.now() - startTime > options.timeout) {
         throw createTimeoutError(options.timeout, 'Clausification');
+    }
+
+    // Check size limit
+    options._nodeCount = (options._nodeCount || 0) + 1;
+    if (options._nodeCount > 50000) {
+        throw createGenericError('CLAUSIFICATION_BLOWUP', 'Formula too complex (node limit exceeded)');
     }
 
     switch (node.type) {

@@ -28,9 +28,10 @@ Original: https://github.com/angrysky56/mcp-logic/
 - [x] **Prolog Engine** (Tau-Prolog) — Horn clauses, Datalog, equality
 - [x] **SAT Engine** (MiniSat) — General FOL, non-Horn formulas
 - [x] **SMT Engine** (Z3) — High-performance SMT solver with arithmetic & quantifiers
-- [x] **ASP Engine** (Clingo) — Answer Set Programming (Experimental)
+- [x] **ASP Engine** (Clingo) — Answer Set Programming (Constraints & Models)
 - [x] **Engine Parameter** — Explicit engine selection via `engine` param
 - [x] **Iterative Deepening** — Progressive inference limit strategy for complex proofs
+- [x] **Resource Management** — Automatic cleanup of WASM resources (Z3 contexts)
 - [ ] **Prover9 WASM** — Optional high-power ATP (deferred until SAT+iterative proves insufficient)
 - [ ] **Demodulation** — Equational term rewriting (deferred until equality workloads show perf issues)
 
@@ -45,17 +46,17 @@ Original: https://github.com/angrysky56/mcp-logic/
 - [ ] **Probabilistic Logic** — Weighted facts, Bayesian inference (research)
 
 ### MCP Protocol
-- [x] **Session-Based Reasoning** — Incremental knowledge base construction
+- [x] **Session-Based Reasoning** — Incremental knowledge base construction with resource cleanup
 - [x] **Axiom Resources** — Browsable libraries (category, Peano, ZFC, ring, lattice, etc.)
 - [x] **Reasoning Prompts** — Templates for proof patterns
 - [x] **Verbosity Control** — `minimal`/`standard`/`detailed` responses
 - [x] **Structured Errors** — Machine-readable error codes and suggestions
 - [x] **Streaming Progress** — Real-time progress notifications (via MCP notifications)
-- [ ] **High-Power Mode** — Extended limits with warning
+- [x] **High-Power Mode** — Extended limits with warning (via `highPower` option)
 
-### Advanced Engines (Research)
-- [x] **SMT (Z3 WASM)** — Theory reasoning (arithmetic, arrays)
-- [x] **ASP (Clingo)** — Non-monotonic, defaults, preferences (Experimental)
+### Advanced Engines
+- [x] **SMT (Z3 WASM)** — Theory reasoning (arithmetic, arrays), Equality, Quantifiers.
+- [x] **ASP (Clingo)** — Non-monotonic reasoning, defaults, preferences.
 - [ ] **Neural-Guided** — LLM-suggested proof paths with validation
 - [ ] **Higher-Order Logic** — Quantify over predicates (research)
 
@@ -64,8 +65,8 @@ Original: https://github.com/angrysky56/mcp-logic/
 - [x] **Pelletier Problems** — P1-P10 benchmark suite (extensible to P1-P75)
 - [x] **Symmetry Benchmarks** — Bell number validation tests
 - [x] **SAT Model Tests** — Group theory and algebraic structure verification
+- [x] **Resilience Tests** — Resource leak detection and complexity limit verification
 - [ ] **TPTP Library Subset** — Standard ATP benchmarks
-
 
 ---
 

@@ -127,4 +127,8 @@ export class SATSession implements EngineSession {
             }, verbosity);
         }
     }
+
+    async close(): Promise<void> {
+        // No cleanup needed for SAT session (GC handled)
+    }
 }

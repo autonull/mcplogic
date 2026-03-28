@@ -1,11 +1,6 @@
 import { ASTNode } from '../../types/ast.js';
 import { isArithmeticOperator, isArithmeticPredicate } from '../../axioms/arithmetic.js';
-
-// We use 'any' for Z3 types here to avoid hard dependency on the z3-solver package
-// during build if it's not strictly required, but for type safety it's better to verify.
-// Since we installed it, we can try to use standard types if possible, but
-// the Z3 API is complex generic-heavy. We'll stick to a loose typing for the context
-// to keep the translator flexible and compatible with the lazy-loaded module.
+import { Z3Context, Z3Expr, Z3Bool, Z3Int } from './types.js';
 
 export interface Z3TranslationOptions {
     enableArithmetic?: boolean;
@@ -13,19 +8,19 @@ export interface Z3TranslationOptions {
 }
 
 export class Z3Translator {
-    private ctx: any; // Z3 Context
+    private ctx: Z3Context;
     private sort: any; // The domain sort (Int or Uninterpreted)
     private options: Z3TranslationOptions;
 
     // Symbol tables
     private functions: Map<string, any> = new Map();
     private predicates: Map<string, any> = new Map();
-    private constants: Map<string, any> = new Map();
+    private constants: Map<string, Z3Expr> = new Map();
 
     // Bound variables stack for quantifiers
-    private boundVars: Map<string, any> = new Map();
+    private boundVars: Map<string, Z3Expr> = new Map();
 
-    constructor(ctx: any, options: Z3TranslationOptions = {}) {
+    constructor(ctx: Z3Context, options: Z3TranslationOptions = {}) {
         this.ctx = ctx;
         this.options = options;
 
@@ -38,7 +33,7 @@ export class Z3Translator {
         }
     }
 
-    translate(node: ASTNode): any {
+    translate(node: ASTNode): Z3Expr {
         switch (node.type) {
             case 'and':
                 return this.ctx.And(this.translate(node.left!), this.translate(node.right!));
@@ -74,7 +69,7 @@ export class Z3Translator {
         }
     }
 
-    private translateQuantifier(node: ASTNode): any {
+    private translateQuantifier(node: ASTNode): Z3Expr {
         const varName = node.variable!;
 
         // Create a fresh bound variable
@@ -98,7 +93,7 @@ export class Z3Translator {
         }
     }
 
-    private translatePredicate(node: ASTNode): any {
+    private translatePredicate(node: ASTNode): Z3Expr {
         const name = node.name!;
         const args = node.args!.map(arg => this.translate(arg));
 
@@ -130,7 +125,7 @@ export class Z3Translator {
         return decl.call(...args);
     }
 
-    private translateFunction(node: ASTNode): any {
+    private translateFunction(node: ASTNode): Z3Expr {
         const name = node.name!;
         const args = node.args!.map(arg => this.translate(arg));
 
@@ -164,19 +159,19 @@ export class Z3Translator {
         return decl.call(...args);
     }
 
-    private translateVariable(node: ASTNode): any {
+    private translateVariable(node: ASTNode): Z3Expr {
         const name = node.name!;
 
         // Check if bound
         if (this.boundVars.has(name)) {
-            return this.boundVars.get(name);
+            return this.boundVars.get(name)!;
         }
 
         // Free variable -> Constant
         return this.translateConstant(node);
     }
 
-    private translateConstant(node: ASTNode): any {
+    private translateConstant(node: ASTNode): Z3Expr {
         const name = node.name!;
 
         // Numeric constant?

@@ -39,6 +39,7 @@ const DEFAULT_OPTIONS: Required<Omit<ClausifyOptions, 'skolemEnv'>> = {
     maxClauseSize: 50,
     timeout: 5000,
     strategy: 'standard',
+    _nodeCount: 0,
 };
 
 /**
@@ -100,6 +101,22 @@ export function clausify(formula: string | ASTNode, options: ClausifyOptions = {
         };
     } catch (e) {
         const timeMs = Date.now() - startTime;
+
+        // Preserve LogicError if it has a code
+        if (e && typeof e === 'object' && 'error' in e && (e as any).error?.code) {
+             const logicErr = (e as any).error;
+             return {
+                success: false,
+                error: logicErr,
+                statistics: {
+                    originalSize: 0,
+                    clauseCount: 0,
+                    maxClauseSize: 0,
+                    timeMs,
+                },
+             };
+        }
+
         const error = e instanceof Error ? e : createGenericError('CLAUSIFICATION_ERROR', String(e));
 
         return {

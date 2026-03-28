@@ -1,7 +1,7 @@
 {
     "name": "mcp-logic",
-    "version": "1.0.0",
-    "description": "MCP server for first-order logic reasoning with Tau-Prolog",
+    "version": "1.1.0",
+    "description": "MCP server for first-order logic reasoning with Z3, Clingo, Tau-Prolog, and SAT",
     "type": "module",
     "main": "dist/lib.js",
     "types": "dist/lib.d.ts",
@@ -28,14 +28,19 @@
         "benchmark:tptp": "tsx benchmarks/run-tptp.ts",
         "tasks": "tsx scripts/task-status.ts",
         "demo": "tsx scripts/demo.ts",
-        "test:llm": "tsx scripts/test_llm.ts"
+        "test:llm": "tsx scripts/test_llm.ts",
+        "benchmark:setup": "tsx scripts/download-benchmarks.ts",
+        "prepublishOnly": "npm run build"
     },
     "keywords": [
         "mcp",
         "logic",
         "prolog",
         "theorem-prover",
-        "first-order-logic"
+        "first-order-logic",
+        "z3",
+        "clingo",
+        "sat"
     ],
     "author": "",
     "license": "MIT",

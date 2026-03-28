@@ -91,6 +91,12 @@ export interface EngineSession {
      * @param options - Engine-specific options
      */
     prove(conclusion: string, options?: EngineProveOptions): Promise<ProveResult>;
+
+    /**
+     * Clean up resources associated with this session.
+     * Should be called when the session is no longer needed.
+     */
+    close(): Promise<void>;
 }
 
 /**

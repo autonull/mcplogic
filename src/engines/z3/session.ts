@@ -4,17 +4,18 @@ import { buildProveResult } from '../../utils/response.js';
 import { parse } from '../../parser/index.js';
 import { createNot } from '../../ast/index.js';
 import { Z3Translator } from './translator.js';
+import { Z3Context, Z3Solver } from './types.js';
 
 export class Z3Session implements EngineSession {
-    private ctx: any;
-    private solver: any;
+    private ctx: Z3Context;
+    private solver: Z3Solver | null;
     private translator: Z3Translator;
     private initialized = false;
 
-    constructor(ctx: any, enableArithmetic: boolean = true, enableEquality: boolean = true) {
+    constructor(ctx: Z3Context, enableArithmetic: boolean = true, enableEquality: boolean = true) {
         this.ctx = ctx;
         // Create a persistent solver
-        this.solver = new this.ctx.Solver();
+        this.solver = new this.ctx.Solver() as unknown as Z3Solver;
         // Create a persistent translator to maintain symbol tables
         this.translator = new Z3Translator(this.ctx, {
             enableArithmetic,
@@ -24,6 +25,7 @@ export class Z3Session implements EngineSession {
     }
 
     async assert(formula: string): Promise<void> {
+        if (!this.solver) throw createEngineError("Session closed");
         try {
             const node = parse(formula);
             const z3Expr = this.translator.translate(node);
@@ -49,6 +51,15 @@ export class Z3Session implements EngineSession {
     ): Promise<ProveResult> {
         const startTime = Date.now();
         const verbosity = options?.verbosity || 'standard';
+
+        if (!this.solver) {
+             return buildProveResult({
+                success: false,
+                result: 'error',
+                error: 'Session closed',
+                timeMs: Date.now() - startTime,
+            }, verbosity);
+        }
 
         try {
             // Use push/pop to avoid polluting the session with the negated goal
@@ -101,6 +112,15 @@ export class Z3Session implements EngineSession {
                 error: `Z3 Session Error: ${error}`,
                 timeMs: Date.now() - startTime,
             }, verbosity);
+        }
+    }
+
+    async close(): Promise<void> {
+        if (this.solver) {
+            if (typeof this.solver.delete === 'function') {
+                this.solver.delete();
+            }
+            this.solver = null;
         }
     }
 }
