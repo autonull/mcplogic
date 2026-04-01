@@ -1,11 +1,12 @@
 import { init } from 'z3-solver';
-import { ReasoningEngine, EngineCapabilities, EngineProveOptions, SatResult } from '../interface.js';
+import { ReasoningEngine, EngineCapabilities, EngineProveOptions, SatResult, EngineSession } from '../interface.js';
 import { ProveResult, createEngineError } from '../../types/index.js';
 import { buildProveResult } from '../../utils/response.js';
 import { parse } from '../../parser/index.js';
 import { createNot } from '../../ast/index.js';
 import { Z3Translator } from './translator.js';
 import { Clause } from '../../types/clause.js';
+import { Z3Session } from './session.js';
 
 export class Z3Engine implements ReasoningEngine {
     readonly name = 'z3';
@@ -33,6 +34,16 @@ export class Z3Engine implements ReasoningEngine {
         }
     }
 
+    async createSession(): Promise<EngineSession> {
+        if (!this.ctx) await this.init();
+        // Create a new session sharing the Context (or maybe a fresh context?)
+        // Sharing context allows sharing symbols? Z3Py usually uses one context.
+        // But if sessions run in parallel, sharing context might be thread-unsafe if not careful?
+        // JS is single threaded. Z3 WASM is likely single threaded.
+        // Sharing context is fine.
+        return new Z3Session(this.ctx);
+    }
+
     async prove(
         premises: string[],
         conclusion: string,
@@ -40,12 +51,28 @@ export class Z3Engine implements ReasoningEngine {
     ): Promise<ProveResult> {
         const startTime = Date.now();
         const verbosity = options?.verbosity || 'standard';
+        const timeoutMs = (options?.maxSeconds || 10) * 1000;
 
         try {
             if (!this.ctx) await this.init();
 
             // Create a solver
             const solver = new this.ctx.Solver();
+
+            // Configure solver parameters (timeout)
+            // Z3 params are set via solver.set() or global config?
+            // In Z3Py: s.set("timeout", ms)
+            // In JS bindings: check API. Usually solver.set('timeout', ms) works if exposed.
+            // If not exposed, we use Promise.race.
+
+            // Try setting parameter if available
+            try {
+                // solver.set('timeout', timeoutMs);
+                // The binding might be strict about types or method existence.
+                // Safest is to check if set exists or just rely on race wrapper for robustness against OOM/hangs.
+            } catch (e) {
+                // Ignore parameter setting errors
+            }
 
             // Create translator
             const translator = new Z3Translator(this.ctx, {
@@ -66,8 +93,23 @@ export class Z3Engine implements ReasoningEngine {
             const z3NegConclusion = translator.translate(negatedConclusion);
             solver.add(z3NegConclusion);
 
-            // Check satisfiability
-            const check = await solver.check();
+            // Check satisfiability with timeout wrapper
+            const checkPromise = solver.check();
+
+            const timeoutPromise = new Promise<'timeout'>((resolve) =>
+                setTimeout(() => resolve('timeout'), timeoutMs)
+            );
+
+            const check = await Promise.race([checkPromise, timeoutPromise]);
+
+            if (check === 'timeout') {
+                 return buildProveResult({
+                    success: false,
+                    result: 'timeout',
+                    message: `Z3 timed out after ${timeoutMs/1000}s`,
+                    timeMs: Date.now() - startTime,
+                }, verbosity);
+            }
 
             if (check === 'unsat') {
                 // Refutation successful -> Proved
@@ -103,6 +145,16 @@ export class Z3Engine implements ReasoningEngine {
 
         } catch (e) {
              const error = e instanceof Error ? e.message : String(e);
+
+             // Check for OOM or WASM errors
+             if (error.includes('OOM') || error.includes('memory') || error.includes('Aborted')) {
+                 // Force context recreation on next call if it crashed?
+                 // The WASM module might be in bad state.
+                 // We can set this.ctx = null to force re-init, but reloading WASM might require page reload?
+                 // For now, just report error.
+                 this.ctx = null;
+             }
+
              console.error('Z3 Proof Error:', error); // Debug logging
              return buildProveResult({
                 success: false,

@@ -68,6 +68,32 @@ export interface SatResult {
 }
 
 /**
+ * A persistent session with a reasoning engine.
+ * Allows incremental assertion of premises and efficient querying.
+ */
+export interface EngineSession {
+    /**
+     * Assert a formula into the session context.
+     * @param formula - The FOL formula to add
+     */
+    assert(formula: string): Promise<void>;
+
+    /**
+     * Retract a formula from the session context.
+     * If the engine does not support retraction, it may throw or require a rebuild.
+     * @param formula - The FOL formula to remove
+     */
+    retract(formula: string): Promise<void>;
+
+    /**
+     * Prove a conclusion based on asserted premises.
+     * @param conclusion - The goal formula
+     * @param options - Engine-specific options
+     */
+    prove(conclusion: string, options?: EngineProveOptions): Promise<ProveResult>;
+}
+
+/**
  * Abstract reasoning engine interface.
  * All engine backends must implement this interface.
  */
@@ -96,6 +122,12 @@ export interface ReasoningEngine {
      * @returns SatResult indicating sat/unsat and model
      */
     checkSat(clauses: Clause[]): Promise<SatResult>;
+
+    /**
+     * Create a new persistent session.
+     * @returns A new EngineSession instance
+     */
+    createSession?(): Promise<EngineSession>;
 
     /**
      * Optional initialization for lazy-loaded engines (e.g., WASM modules).

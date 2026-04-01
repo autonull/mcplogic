@@ -12,6 +12,10 @@ import {
     createSessionNotFoundError,
     createSessionLimitError,
 } from '../types/errors.js';
+import { EngineSession } from '../engines/interface.js';
+import { EngineManager } from '../engines/manager.js';
+import { parse } from '../parser/index.js';
+import { containsArithmetic } from '../axioms/arithmetic.js';
 
 // Browser-safe UUID generation
 function generateUUID(): string {
@@ -31,11 +35,15 @@ function generateUUID(): string {
 export interface Session {
     id: string;
     premises: string[];          // Original FOL formulas
-    prologProgram: string;       // Compiled Prolog program
+    prologProgram: string;       // Compiled Prolog program (Legacy/Backup)
     ontology?: OntologyManager;  // Optional ontology manager
     createdAt: number;
     lastAccessedAt: number;
     ttlMs: number;               // Time-to-live in milliseconds
+
+    // Engine State
+    engineSession?: EngineSession;
+    engineName?: string;
 }
 
 /**
@@ -44,6 +52,7 @@ export interface Session {
 export interface CreateSessionOptions {
     ttlMs?: number;              // Custom TTL (default: 30 minutes)
     ontology?: OntologyConfig;   // Optional ontology configuration
+    engine?: string;             // Preferred engine (optional)
 }
 
 /**
@@ -52,6 +61,7 @@ export interface CreateSessionOptions {
 export class SessionManager {
     private sessions = new Map<string, Session>();
     private gcIntervalId: ReturnType<typeof setInterval> | null = null;
+    private engineManager?: EngineManager;
 
     /** GC runs every minute */
     private readonly gcIntervalMs = 60_000;
@@ -62,7 +72,8 @@ export class SessionManager {
     /** Maximum number of concurrent sessions */
     static readonly MAX_SESSIONS = 1000;
 
-    constructor() {
+    constructor(engineManager?: EngineManager) {
+        this.engineManager = engineManager;
         // Start garbage collection
         this.gcIntervalId = setInterval(() => this.gc(), this.gcIntervalMs);
     }
@@ -85,6 +96,7 @@ export class SessionManager {
             lastAccessedAt: now,
             ttlMs: options?.ttlMs ?? this.defaultTtlMs,
             ontology: options?.ontology ? new OntologyManager(options.ontology) : undefined,
+            engineName: options?.engine
         };
 
         this.sessions.set(session.id, session);
@@ -123,7 +135,7 @@ export class SessionManager {
     /**
      * Assert a premise into a session's knowledge base
      */
-    assertPremise(id: string, formula: string): Session {
+    async assertPremise(id: string, formula: string): Promise<Session> {
         const session = this.get(id);
 
         let processedFormula = formula;
@@ -132,23 +144,112 @@ export class SessionManager {
             session.ontology.validate(processedFormula);
         }
 
+        // Add to premises list (Source of Truth)
         session.premises.push(processedFormula);
-        session.prologProgram = buildPrologProgram(session.premises);
+
+        // Legacy support: update prolog program string (cheap)
+        // This ensures code relying on session.prologProgram still works if engine session fails
+        try {
+            session.prologProgram = buildPrologProgram(session.premises);
+        } catch (e) {
+            // Ignore prolog build errors if we are switching to non-prolog engine
+        }
+
+        // Handle Engine Session Logic
+        if (this.engineManager) {
+            await this.updateEngineSession(session, processedFormula);
+        }
+
         return session;
+    }
+
+    private async updateEngineSession(session: Session, newPremise: string) {
+        if (!this.engineManager) return;
+
+        // Determine required capabilities based on new premise
+        // We do a lightweight check. Full check happens in selectEngine.
+        const ast = parse(newPremise);
+        const requiresArithmetic = containsArithmetic(ast);
+
+        // If we have an existing session
+        if (session.engineSession && session.engineName) {
+            // Heuristic: Switch to Z3 for arithmetic if not already using it.
+            // Although Prolog supports arithmetic via axioms, Z3 is the preferred engine for SMT tasks.
+            // If the session engine was chosen automatically (no explicit preference stored, though currently we don't store that distinction),
+            // we should probably upgrade.
+            if (requiresArithmetic && session.engineName !== 'z3') {
+                 // Trigger rebuild to pick up Z3
+                 await this.rebuildSession(session);
+                 return;
+            }
+
+            try {
+                await session.engineSession.assert(newPremise);
+            } catch (e) {
+                // If assert fails, maybe the engine doesn't support it (e.g. syntax error in translator)
+                // Or maybe we need to upgrade.
+                // Force a rebuild with auto-selection.
+                console.warn(`Assertion failed on ${session.engineName}, trying to re-select engine...`, e);
+                await this.rebuildSession(session);
+            }
+        } else {
+            // No active session yet, or lost.
+            // Determine best engine for ALL premises.
+            await this.rebuildSession(session);
+        }
+    }
+
+    private async rebuildSession(session: Session) {
+        if (!this.engineManager) return;
+
+        // Re-evaluate best engine based on premises
+        const hasArithmetic = session.premises.some(p => {
+            try { return containsArithmetic(parse(p)); } catch { return false; }
+        });
+
+        // Prefer Z3 for arithmetic, otherwise Prolog is lighter
+        const engineName = hasArithmetic ? 'z3' : 'prolog';
+
+        try {
+            session.engineSession = await this.engineManager.createSession(engineName);
+            session.engineName = engineName;
+
+            // Replay all premises
+            for (const p of session.premises) {
+                await session.engineSession.assert(p);
+            }
+        } catch (e) {
+            console.error('Failed to rebuild session:', e);
+            session.engineSession = undefined;
+            // Fallback?
+        }
     }
 
     /**
      * Retract a premise from a session's knowledge base
      * Returns true if the premise was found and removed
      */
-    retractPremise(id: string, formula: string): boolean {
+    async retractPremise(id: string, formula: string): Promise<boolean> {
         const session = this.get(id);
         const index = session.premises.indexOf(formula);
         if (index === -1) {
             return false;
         }
         session.premises.splice(index, 1);
+
+        // Update Prolog legacy
         session.prologProgram = buildPrologProgram(session.premises);
+
+        // Update Engine Session
+        if (session.engineSession) {
+            try {
+                await session.engineSession.retract(formula);
+            } catch (e) {
+                // If retraction not supported incrementally, rebuild
+                await this.rebuildSession(session);
+            }
+        }
+
         return true;
     }
 
@@ -163,10 +264,11 @@ export class SessionManager {
     /**
      * Clear all premises from a session (keeps session alive)
      */
-    clear(id: string): Session {
+    async clear(id: string): Promise<Session> {
         const session = this.get(id);
         session.premises = [];
         session.prologProgram = '';
+        session.engineSession = undefined; // Will be recreated on next assert
         return session;
     }
 
@@ -180,6 +282,7 @@ export class SessionManager {
         lastAccessedAt: number;
         ttlMs: number;
         expiresAt: number;
+        engine?: string;
     } {
         const session = this.sessions.get(id);
         if (!session) {
@@ -192,6 +295,7 @@ export class SessionManager {
             lastAccessedAt: session.lastAccessedAt,
             ttlMs: session.ttlMs,
             expiresAt: session.lastAccessedAt + session.ttlMs,
+            engine: session.engineName
         };
     }
 
@@ -235,6 +339,6 @@ export class SessionManager {
 /**
  * Create a new SessionManager instance
  */
-export function createSessionManager(): SessionManager {
-    return new SessionManager();
+export function createSessionManager(engineManager?: EngineManager): SessionManager {
+    return new SessionManager(engineManager);
 }

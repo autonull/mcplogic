@@ -14,8 +14,10 @@ import {
     ReasoningEngine,
     EngineCapabilities,
     EngineProveOptions,
-    SatResult
+    SatResult,
+    EngineSession
 } from '../interface.js';
+import { PrologSession } from './session.js';
 
 export { LogicEngine, createLogicEngine } from './engine.js';
 
@@ -34,12 +36,14 @@ export class PrologEngine implements ReasoningEngine {
     };
 
     private engine: LogicEngine;
+    private inferenceLimit: number;
 
     /**
      * @param timeout Timeout in milliseconds
      * @param inferenceLimit Maximum inference steps
      */
     constructor(timeout: number = 5000, inferenceLimit: number = 1000) {
+        this.inferenceLimit = inferenceLimit;
         // LogicEngine no longer accepts timeout in constructor
         this.engine = new LogicEngine(inferenceLimit);
     }
@@ -47,6 +51,10 @@ export class PrologEngine implements ReasoningEngine {
     async init(): Promise<void> {
         // No-op for Prolog engine (initialized in constructor/sync)
         return Promise.resolve();
+    }
+
+    async createSession(): Promise<EngineSession> {
+        return new PrologSession(this.inferenceLimit);
     }
 
     /**

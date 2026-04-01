@@ -1,5 +1,5 @@
 import { ASTNode } from '../../types/ast.js';
-import { Clause, Literal } from '../../types/clause.js';
+import { Clause, Literal, SkolemEnv } from '../../types/clause.js';
 import { createClausificationError } from '../../types/errors.js';
 
 /**
@@ -16,13 +16,17 @@ import { createClausificationError } from '../../types/errors.js';
 
 interface TseitinContext {
     clauses: Clause[];
-    counter: number;
+    // We can use a reference to the counter or a context object that holds it?
+    // SkolemEnv has a tseitinCounter property.
+    skolemEnv?: SkolemEnv;
+    localCounter: number; // Fallback if no SkolemEnv
 }
 
-export function toCNFTseitin(node: ASTNode): Clause[] {
+export function toCNFTseitin(node: ASTNode, skolemEnv?: SkolemEnv): Clause[] {
     const ctx: TseitinContext = {
         clauses: [],
-        counter: 0,
+        skolemEnv,
+        localCounter: 0,
     };
 
     // We assume node is NNF and quantifier-free
@@ -34,6 +38,16 @@ export function toCNFTseitin(node: ASTNode): Clause[] {
     });
 
     return ctx.clauses;
+}
+
+function getNextCounter(ctx: TseitinContext): number {
+    if (ctx.skolemEnv) {
+        if (ctx.skolemEnv.tseitinCounter === undefined) {
+            ctx.skolemEnv.tseitinCounter = 0;
+        }
+        return ++ctx.skolemEnv.tseitinCounter;
+    }
+    return ++ctx.localCounter;
 }
 
 function processNode(node: ASTNode, ctx: TseitinContext): Literal {
@@ -58,7 +72,8 @@ function processNode(node: ASTNode, ctx: TseitinContext): Literal {
     // It's a complex formula (AND, OR)
     // Generate fresh predicate
     const freeVars = getFreeVariables(node);
-    const predName = `_tseitin_${++ctx.counter}`;
+    const counter = getNextCounter(ctx);
+    const predName = `_tseitin_${counter}`;
 
     const freshLit: Literal = {
         predicate: predName,

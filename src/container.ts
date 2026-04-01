@@ -30,8 +30,9 @@ export function createContainer(): ServerContainer {
     // Initialize engines and managers
     const modelFinder = createModelFinder();
     const categoricalHelpers = new CategoricalHelpers();
-    const sessionManager = createSessionManager();
     const engineManager = createEngineManager();
+    // Pass engineManager to sessionManager
+    const sessionManager = createSessionManager(engineManager);
 
     // Initialize Evolution Engine components
     const llmProvider = new StandardLLMProvider();

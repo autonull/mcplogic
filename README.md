@@ -161,6 +161,15 @@ The `include_trace` option (boolean) enables step-by-step derivation output in t
 | `clingo` | Answer Set Programming | Constraints (Experimental) |
 | `auto` | Default — selects based on formula | Analyzes clause structure & features |
 
+### Engine Capabilities
+
+| Engine | Strength | Arithmetic | Quantifiers | Equality | Model Size |
+|--------|----------|------------|-------------|----------|------------|
+| **Z3** | High (SMT) | ✅ | ✅ | ✅ | Large |
+| **Clingo** | High (ASP) | ✅ | Limited | ✅ | Large |
+| **Prolog** | Medium (Resolution) | ✅ | Limited (Horn) | ✅ | Small/Medium |
+| **SAT** | Low (Propositional) | ❌ | ❌ | ❌ | Small |
+
 ---
 
 ## Formula Syntax

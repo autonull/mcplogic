@@ -16,11 +16,13 @@ import {
     ReasoningEngine,
     EngineCapabilities,
     EngineProveOptions,
-    SatResult
+    SatResult,
+    EngineSession
 } from '../interface.js';
 import { instantiateClauses } from '../../logic/herbrand/index.js';
 import { generateEqualityAxiomsForSAT } from '../../axioms/equality.js';
 import { literalToKey } from './serialization.js';
+import { SATSession } from './session.js';
 
 /**
  * SAT solver-based reasoning engine.
@@ -42,6 +44,10 @@ export class SATEngine implements ReasoningEngine {
     async init(): Promise<void> {
         // No-op for SAT engine (initialized in constructor/sync)
         return Promise.resolve();
+    }
+
+    async createSession(): Promise<EngineSession> {
+        return new SATSession();
     }
 
     /**

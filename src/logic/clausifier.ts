@@ -34,7 +34,7 @@ import { toCNF } from './cnf.js';
 import { toCNFTseitin } from './transform/tseitin.js';
 
 /** Default clausification options */
-const DEFAULT_OPTIONS: Required<ClausifyOptions> = {
+const DEFAULT_OPTIONS: Required<Omit<ClausifyOptions, 'skolemEnv'>> = {
     maxClauses: 10000,
     maxClauseSize: 50,
     timeout: 5000,
@@ -63,7 +63,8 @@ export function clausify(formula: string | ASTNode, options: ClausifyOptions = {
         const standardized = standardizeVariables(nnf);
 
         // Step 5: Skolemize
-        const skolemEnv = createSkolemEnv();
+        // Use provided SkolemEnv or create a new one
+        const skolemEnv = opts.skolemEnv || createSkolemEnv();
         const skolemized = skolemize(standardized, skolemEnv);
 
         // Step 6: Drop universal quantifiers
@@ -72,7 +73,7 @@ export function clausify(formula: string | ASTNode, options: ClausifyOptions = {
         // Step 7-8: Convert to CNF and extract clauses
         let clauses: Clause[];
         if (opts.strategy === 'tseitin') {
-            clauses = toCNFTseitin(quantifierFree);
+            clauses = toCNFTseitin(quantifierFree, skolemEnv);
         } else {
             clauses = toCNF(quantifierFree, opts, startTime);
         }

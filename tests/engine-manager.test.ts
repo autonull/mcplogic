@@ -16,23 +16,23 @@ describe('EngineManager', () => {
     });
 
     describe('engine access', () => {
-        it('should provide access to Prolog engine', () => {
-            const prolog = manager.getPrologEngine();
+        it('should provide access to Prolog engine', async () => {
+            const prolog = await manager.getPrologEngine();
             expect(prolog.name).toBe('prolog/tau-prolog');
         });
 
-        it('should provide access to SAT engine', () => {
-            const sat = manager.getSATEngine();
+        it('should provide access to SAT engine', async () => {
+            const sat = await manager.getSATEngine();
             expect(sat.name).toBe('sat/minisat');
         });
 
-        it('should provide access to Z3 engine', () => {
-            const z3 = manager.getZ3Engine();
+        it('should provide access to Z3 engine', async () => {
+            const z3 = await manager.getZ3Engine();
             expect(z3.name).toBe('z3');
         });
 
-        it('should provide access to Clingo engine', () => {
-            const clingo = manager.getClingoEngine();
+        it('should provide access to Clingo engine', async () => {
+            const clingo = await manager.getClingoEngine();
             expect(clingo.name).toBe('clingo');
         });
 
