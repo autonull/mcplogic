@@ -49,6 +49,15 @@ export class ReasoningAgent {
     }
 
     /**
+     * Closes the engine manager and cleans up any persistent resources (like Z3 or Clingo workers).
+     */
+    async close(): Promise<void> {
+        if (this.engine) {
+            await this.engine.close();
+        }
+    }
+
+    /**
      * Assert a premise into the agent's knowledge base.
      */
     assert(premise: string): void {

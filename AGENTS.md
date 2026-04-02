@@ -59,7 +59,7 @@ We provide tools to test the integration with your local LLM and verify its reas
 Run the interactive CLI to chat with the Logic Server, select pre-defined scenarios, and configure connection settings on the fly:
 
 ```bash
-npm run demo
+pnpm run demo
 ```
 
 Features:
@@ -72,7 +72,7 @@ Features:
 To verify your LLM's performance against a suite of logic problems:
 
 ```bash
-npm run test:llm -- --url="http://localhost:8080/v1"
+pnpm run test:llm -- --url="http://localhost:8080/v1"
 ```
 
 Arguments:

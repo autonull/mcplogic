@@ -33,6 +33,8 @@ test.describe('Browser Compatibility', () => {
                                 argv: []
                             };
                             window.Buffer = { isBuffer: () => false };
+                            window.global = window;
+                            window.global._ = window._;
 
                             // Polyfill module/require
                             window.module = { exports: {} };
@@ -93,6 +95,8 @@ test.describe('Browser Compatibility', () => {
                                     return obj;
                                 }
                             };
+                            window.global = window;
+                            window.global._ = window._;
                         </script>
 
                         <!-- Load logic-solver -->
@@ -107,7 +111,13 @@ test.describe('Browser Compatibility', () => {
                         {
                             "imports": {
                                 "tau-prolog": "/vendor-wrappers/tau-prolog.js",
-                                "logic-solver": "/vendor-wrappers/logic-solver.js"
+                                "logic-solver": "/vendor-wrappers/logic-solver.js",
+                                "z3-solver": "/vendor-wrappers/z3-solver.js",
+                                "clingo-wasm": "/vendor-wrappers/clingo-wasm.js",
+                                "fs/promises": "/vendor-wrappers/fs-promises.js",
+                                "fs": "/vendor-wrappers/fs.js",
+                                "path": "/vendor-wrappers/path.js",
+                                "crypto": "/vendor-wrappers/crypto.js"
                             }
                         }
                         </script>
@@ -151,6 +161,27 @@ test.describe('Browser Compatibility', () => {
                 });
                 return;
             }
+            if (url.pathname === '/vendor-wrappers/crypto.js') {
+                await route.fulfill({
+                    body: 'export const randomUUID = () => "uuid"; export default { randomUUID };',
+                    contentType: 'application/javascript'
+                });
+                return;
+            }
+            if (url.pathname === '/vendor-wrappers/path.js') {
+                await route.fulfill({
+                    body: 'export default { join: () => "", resolve: () => "" };',
+                    contentType: 'application/javascript'
+                });
+                return;
+            }
+            if (url.pathname === '/vendor-wrappers/fs-promises.js' || url.pathname === '/vendor-wrappers/fs.js') {
+                await route.fulfill({
+                    body: 'export default { mkdir: async () => {}, writeFile: async () => {}, readFile: async () => "{}", unlink: async () => {}, readdir: async () => [] };',
+                    contentType: 'application/javascript'
+                });
+                return;
+            }
 
             // Serve vendor wrappers
             if (url.pathname === '/vendor-wrappers/tau-prolog.js') {
@@ -163,6 +194,13 @@ test.describe('Browser Compatibility', () => {
             if (url.pathname === '/vendor-wrappers/logic-solver.js') {
                 await route.fulfill({
                     body: 'export default window.Logic;',
+                    contentType: 'application/javascript'
+                });
+                return;
+            }
+            if (url.pathname === '/vendor-wrappers/z3-solver.js' || url.pathname === '/vendor-wrappers/clingo-wasm.js') {
+                await route.fulfill({
+                    body: 'export const init = async () => ({ Context: function(){} }); export const run = async () => {};',
                     contentType: 'application/javascript'
                 });
                 return;

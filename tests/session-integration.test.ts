@@ -10,8 +10,9 @@ describe('Session Integration', () => {
         sessionManager = createSessionManager(engineManager);
     });
 
-    afterEach(() => {
+    afterEach(async () => {
         sessionManager.stop();
+        await engineManager.close();
     });
 
     it('should create a session and assert premises', async () => {

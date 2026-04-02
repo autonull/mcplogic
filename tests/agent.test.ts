@@ -1,8 +1,15 @@
 import { ReasoningAgent } from '../src/agent/core.js';
 
 describe('ReasoningAgent', () => {
+    let agents: ReasoningAgent[] = [];
+
+    afterAll(async () => {
+        await Promise.all(agents.map(a => a.close()));
+    });
+
     test('should maintain state with assertions', () => {
         const agent = new ReasoningAgent();
+        agents.push(agent);
         agent.assert('P(a)');
         expect(agent.getPremises()).toEqual(['P(a)']);
         agent.assert('Q(a)');
@@ -13,6 +20,7 @@ describe('ReasoningAgent', () => {
 
     test('should prove simple goals from asserted premises', async () => {
         const agent = new ReasoningAgent();
+        agents.push(agent);
         agent.assert('P(a)');
         agent.assert('P(x) -> Q(x)');
 
@@ -23,6 +31,7 @@ describe('ReasoningAgent', () => {
 
     test('should disprove goals (find counterexample)', async () => {
         const agent = new ReasoningAgent();
+        agents.push(agent);
         agent.assert('P(a)');
         agent.assert('-Q(a)');
 
@@ -32,6 +41,7 @@ describe('ReasoningAgent', () => {
 
     test('should find counterexample for unprovable statements', async () => {
         const agent = new ReasoningAgent();
+        agents.push(agent);
         agent.assert('P(a)');
 
         // Q(a) does not follow from P(a), so a counterexample (P=T, Q=F) exists.

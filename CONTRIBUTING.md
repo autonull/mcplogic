@@ -12,17 +12,17 @@ Thank you for your interest in improving MCP Logic!
 
 2.  **Install dependencies**:
     ```bash
-    npm install
+    pnpm install
     ```
 
 3.  **Build**:
     ```bash
-    npm run build
+    pnpm run build
     ```
 
 4.  **Run tests**:
     ```bash
-    npm test
+    pnpm test
     ```
 
 ## Project Structure
@@ -57,10 +57,10 @@ Thank you for your interest in improving MCP Logic!
 
 Run specific tests:
 ```bash
-npm test tests/z3-engine.test.ts
+pnpm test tests/z3-engine.test.ts
 ```
 
 Run browser integration tests (requires Playwright):
 ```bash
-npm run test:browser
+pnpm run test:browser
 ```
