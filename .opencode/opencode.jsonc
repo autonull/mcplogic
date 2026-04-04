@@ -1,0 +1,7 @@
+{
+  "plugin": [
+    "octto",
+    "@mohak34/opencode-notifier@latest",
+    "@tarquinen/opencode-dcp@latest"
+  ]
+}
