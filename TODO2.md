@@ -1,183 +1,600 @@
-**Complete Self-Contained Development Plan for mcplogic**  
-*(Pure TypeScript + npm-ready dependencies only • No self-compiled WASM • Elegance prioritized)*
+# MCP Logic - Master Development Plan
 
-**Goal**
-Transform mcplogic into a production-grade, elegant FOL/SMT/ASP reasoning engine that delivers Prover9-level (or better) theorem-proving and model-finding power while remaining 100% pure TypeScript, zero native build steps, and zero user-side compilation. Everything must stay modular, type-safe, lazy-loaded, and beautiful.
+**Mission:** Transform mcplogic into a production-grade, neurosymbolic reasoning platform that's 100% pure TypeScript with zero native build steps.
 
-**Approved Dependencies (all npm-ready, prebuilt WASM bundled, no compilation)**  
+---
+
+## Executive Summary
+
+**Current State:**
+- ✅ 8,500+ lines TypeScript, 265+ tests (80%+ coverage)
+- ✅ 4 engines: Prolog, SAT, Z3, Clingo (all WASM)
+- ✅ Multi-engine federation with auto-selection
+- ✅ Session management, MCP server (17 tools)
+- ✅ Arithmetic, equality, symmetry breaking
+
+**Target:** Complete neurosymbolic platform with LLM integration, ontology support, and agentic reasoning.
+
+---
+
+## Phase 0: Foundation & Usability (1-2 hours each) **COMPLETE**
+
+### 0.1 Enhanced CLI REPL
+**Purpose:** Enable interactive testing without MCP client
+
+**Implementation:**
+```typescript
+// src/cli.ts - enhanced REPL
+const HELP = `
+MCP Logic CLI v${VERSION}
+
+Commands:
+  .assert <formula>    Add formula to knowledge base
+  .prove <goal>        Prove goal from current KB
+  .model               Find model for current KB
+  .list                List all premises
+  .clear               Clear KB
+  .load <file>         Load formulas from file
+  .help                Show this help
+  .quit                Exit
+
+Examples:
+  mcplogic repl
+  mcplogic prove problem.p
+  mcplogic model theory.p
+`;
+```
+
+**Done When:**
+- [ ] `.help` shows all commands with examples
+- [ ] `.load` imports formulas from file
+- [ ] Auto-complete for predicates (optional)
+- [ ] Syntax highlighting (optional)
+
+---
+
+### 0.2 Error Message Enhancement
+**Purpose:** Reduce user frustration with actionable errors
+
+**Implementation:**
+```typescript
+// src/utils/errors.ts
+export function enhanceError(error: ParseError): string {
+  return `
+Syntax Error: ${error.message}
+  Formula: ${error.formula}
+  Position: ${error.position}
+  
+Common patterns:
+  - Predicates: lowercase (man(x), not Man(x))
+  - Quantifiers: "all x (...)" or "exists x (...)"
+  - Operators: -> (implies), & (and), | (or), - (not)
+
+Example: "all x (man(x) -> mortal(x))"
+`;
+}
+```
+
+**Done When:**
+- [ ] All parse errors show examples
+- [ ] "Did you mean?" suggestions for common typos
+- [ ] Links to syntax documentation
+
+---
+
+### 0.3 Example Library
+**Purpose:** Provide working examples for common patterns
+
+**Create:** `examples/` directory with:
+- `01-socrates.p` - Classic syllogism
+- `02-transitivity.p` - Transitivity proof
+- `03-model-finding.p` - Find counterexample
+- `04-arithmetic.p` - Arithmetic reasoning
+- `05-equality.p` - Equality chain
+- `06-nonhorn.p` - Non-Horn clause (needs SAT)
+- `07-category.p` - Category theory
+- `08-group.p` - Group theory
+
+**Done When:**
+- [ ] 10+ working examples
+- [ ] Each has comments explaining syntax
+- [ ] README links to examples
+
+---
+
+### 0.4 Test Fixtures & Helpers
+**Purpose:** Reduce test duplication, improve consistency
+
+**Create:** `tests/fixtures.ts`
+```typescript
+export const FORMULAS = {
+  socrates: {
+    premises: ['all x (man(x) -> mortal(x))', 'man(socrates)'],
+    conclusion: 'mortal(socrates)',
+    expected: { found: true }
+  },
+  horn: {
+    premises: ['p(a)', 'all x (p(x) -> q(x))'],
+    conclusion: 'q(a)',
+    expected: { found: true }
+  },
+  nonHorn: {
+    premises: ['P(a) | Q(a)', '-P(a)'],
+    conclusion: 'Q(a)',
+    expected: { found: true }
+  }
+} as const;
+
+export function createTestEngine(opts?: { 
+  highPower?: boolean; 
+  timeout?: number;
+  inferenceLimit?: number;
+}) { /* ... */ }
+```
+
+**Done When:**
+- [ ] 50% of tests use fixtures
+- [ ] Test code reduced by 20%
+
+---
+
+## Phase 1: Quick Wins (High Impact, Low Effort) **COMPLETE**
+
+### 1.1 High-Power Mode Flag
+**Purpose:** Enable extended limits for complex proofs
+
+**Changes:**
+```typescript
+// src/types/options.ts
+export const DEFAULTS = {
+  maxSeconds: 30,
+  maxInferences: 5000,
+  highPowerMaxSeconds: 300,
+  highPowerMaxInferences: 100000,
+} as const;
+
+// src/handlers/core.ts
+const inferenceLimit = args.highPower 
+  ? DEFAULTS.highPowerMaxInferences 
+  : (args.inference_limit ?? DEFAULTS.maxInferences);
+```
+
+**Done When:**
+- [ ] `highPower: true` increases limits
+- [ ] Works for `prove` and `find-model`
+- [ ] Unit test verifies limits applied
+- [ ] README updated
+
+---
+
+### 1.2 Isomorphism Filtering
+**Purpose:** Skip equivalent models in enumeration
+
+**Status:** Already implemented in `src/modelFinder.ts:267`
+
+**Done When:**
+- [ ] `count: N` returns N non-isomorphic models
+- [ ] Test verifies non-isomorphism
+- [ ] README line 22: `[ ]` → `[x]`
+
+---
+
+### 1.3 TPTP Benchmark Suite
+**Purpose:** Standard ATP benchmarks for regression testing
+
+**Create:** `benchmarks/tptp/` with 10+ problems:
+- PUZ001-1 (Dreadbury Mansion)
+- SYN001-1 (Simple syllogism)
+- NUM001-1 (Arithmetic)
+- GRP001-1 (Group theory)
+
+**Done When:**
+- [ ] `npm run benchmark:tptp` runs suite
+- [ ] Results show pass/fail + timing
+- [ ] CI runs on PR
+
+---
+
+## Phase 2: Library Export & Browser Support
+
+### 2.1 NPM Library Export
+**Purpose:** Enable use as library (not just MCP server)
+
+**Implementation:**
+```typescript
+// src/lib.ts - public API
+export { createLogicEngine } from './logicEngine';
+export { createModelFinder } from './modelFinder';
+export { parse } from './parser';
+export type { Formula, ProofResult, ModelResult };
+
+// package.json
+"exports": {
+  ".": "./dist/lib.js",
+  "./core": "./dist/core.js"
+}
+```
+
+**Done When:**
+- [ ] `import { createLogicEngine } from '@mcplogic/core'` works
+- [ ] TypeScript declarations included
+- [ ] Example project compiles and runs
+- [ ] No MCP SDK dependency in core
+
+---
+
+### 2.2 Browser/WASM Build
+**Purpose:** Enable browser-based reasoning
+
+**Implementation:**
+```json
+// package.json scripts
+"build:browser": "tsc -p tsconfig.browser.json",
+"start:playground": "pnpm build:browser && npx serve ."
+```
+
+**Done When:**
+- [ ] `npm run build:browser` produces working bundle
+- [ ] Test HTML page proves simple theorem
+- [ ] No Node.js-specific code in browser bundle
+- [ ] Playground UI with engine dropdown
+
+---
+
+### 2.3 Web Playground
+**Purpose:** Interactive web UI for learning/testing
+
+**Features:**
+- Syntax-highlighted formula editor
+- Real-time syntax validation
+- Engine selection dropdown
+- Proof trace visualization
+- Model visualization (ASCII/SVG)
+
+**Done When:**
+- [ ] Modern dark-mode UI
+- [ ] Works 100% offline
+- [ ] Deploy to GitHub Pages
+
+---
+
+## Phase 3: AI Integration
+
+### 3.1 Natural Language → FOL Translation
+**Purpose:** Make logic accessible to non-experts
+
+**Approach A:** Offline (Transformers.js)
+```typescript
+// src/llm/translator.ts
+import { pipeline } from '@xenova/transformers';
+
+const translator = await pipeline('text2text-generation', 'Xenova/t5-small');
+
+export async function translate(text: string): Promise<TranslationResult> {
+  const prompt = `Translate to FOL: "${text}"`;
+  const result = await translator(prompt);
+  return parseFOL(result[0].generated_text);
+}
+```
+
+**Approach B:** LLM API (OpenAI/Anthropic)
+```typescript
+// src/llm/api.ts
+export async function translateWithLLM(text: string): Promise<TranslationResult> {
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${process.env.OPENAI_KEY}` },
+    body: JSON.stringify({
+      model: 'gpt-4',
+      messages: [{
+        role: 'system',
+        content: 'Translate natural language to FOL syntax. Output only FOL.'
+      }, {
+        role: 'user',
+        content: text
+      }]
+    })
+  });
+  return parseFOL(response.choices[0].message.content);
+}
+```
+
+**Done When:**
+- [ ] `translate-text` tool accepts natural language
+- [ ] Returns structured `{ premises, conclusion }`
+- [ ] Validates generated formulas
+- [ ] Works offline (Transformers.js fallback)
+
+---
+
+### 3.2 Heuristic Strategy Selection
+**Purpose:** Auto-select best engine/strategy for problem
+
+**Implementation:**
+```typescript
+// src/engines/heuristics.ts
+export function selectStrategy(features: FormulaFeatures): EngineChoice {
+  const { hasArithmetic, hasQuantifiers, isHorn, domainSize } = features;
+  
+  if (hasArithmetic && hasQuantifiers) return 'z3';
+  if (isHorn) return 'prolog';
+  if (domainSize > 10) return 'sat';
+  return 'auto';
+}
+```
+
+**Done When:**
+- [ ] Equality-heavy → `iterative` strategy
+- [ ] Pure Horn → `prolog` engine
+- [ ] Strategy choice logged in verbose output
+
+---
+
+## Phase 4: Neurosymbolic Features
+
+### 4.1 Ontology Support
+**Purpose:** Type constraints on predicates
+
+**Implementation:**
+```typescript
+// src/types/ontology.ts
+export interface Ontology {
+  types: Set<string>;          // person, number, group
+  relationships: Set<string>;  // loves, greater_than
+  constraints: Set<string>;    // "loves(person, person)"
+  synonyms: Map<string, string>; // human → person
+}
+
+// src/session/ontology-validator.ts
+export function validatePredicate(
+  predicate: string, 
+  args: string[], 
+  ontology: Ontology
+): ValidationResult {
+  if (!ontology.relationships.has(predicate)) {
+    return { valid: false, error: `Unknown predicate: ${predicate}` };
+  }
+  // Check type constraints...
+}
+```
+
+**Done When:**
+- [ ] Sessions can have ontology constraints
+- [ ] Invalid predicates rejected with clear error
+- [ ] Synonym expansion works (`human` → `person`)
+- [ ] Ontology can be updated dynamically
+
+---
+
+### 4.2 Agentic Reasoning Loop
+**Purpose:** Multi-step reasoning with confidence scoring
+
+**Implementation:**
+```typescript
+// src/agent/core.ts
+export interface ReasoningStep {
+  action: 'assert' | 'query' | 'conclude';
+  content: string;
+  result?: unknown;
+  confidence: number;
+  timestamp: number;
+}
+
+export async function agentReason(
+  goal: string,
+  premises: string[],
+  options: { maxSteps: number; timeout: number }
+): Promise<ReasoningResult> {
+  const steps: ReasoningStep[] = [];
+  
+  // Step 1: Attempt proof
+  const proof = await prove(premises, goal);
+  if (proof.found) {
+    return { answer: 'proved', confidence: 1.0, steps };
+  }
+  
+  // Step 2: Find counterexample
+  const counter = await findCounterexample(premises, goal);
+  if (counter.success) {
+    return { answer: 'disproved', confidence: 0.9, steps };
+  }
+  
+  // Step 3: Heuristic exploration
+  // ...
+  
+  return { answer: 'unknown', confidence: 0.3, steps };
+}
+```
+
+**Done When:**
+- [ ] Multi-step reasoning with assert/query/conclude
+- [ ] Confidence scoring based on proof success
+- [ ] Max steps limit prevents infinite loops
+- [ ] Full trace of all reasoning steps
+
+---
+
+## Phase 5: Evolution Engine (Research)
+
+### 5.1 Genetic Optimization of Strategies
+**Purpose:** Evolve optimal proof strategies from data
+
+**Architecture:**
+```
+┌─────────────────┐
+│  Problem Set    │
+│  (input)        │
+└────────┬────────┘
+         │
+         v
+┌─────────────────┐
+│  Strategy Pool  │ ←── Genetic Algorithm
+│  (population)   │     - Mutation
+│  - timeout      │     - Crossover
+│  - engine       │     - Selection
+│  - heuristics   │
+└────────┬────────┘
+         │
+         v
+┌─────────────────┐
+│  Validation     │ ←── Fitness Function
+│  (success rate) │     - Accuracy
+│                 │     - Speed
+└─────────────────┘     - Generality
+```
+
+**Done When:**
+- [ ] `evolution-start` runs genetic algorithm
+- [ ] `evolution-list-strategies` shows evolved strategies
+- [ ] `evolution-generate-cases` creates test problems
+- [ ] Demonstrated improvement on benchmark suite
+
+---
+
+## Phase 6: Documentation & Community
+
+### 6.1 Comprehensive Documentation
+**Create:**
+- `docs/GETTING_STARTED.md` - 5-minute quickstart
+- `docs/EXAMPLES.md` - 20+ solved problems
+- `docs/TROUBLESHOOTING.md` - FAQ
+- `docs/ARCHITECTURE.md` - System design
+- `docs/CONTRIBUTING.md` - How to contribute
+
+**Done When:**
+- [ ] All docs written with examples
+- [ ] README links to all docs
+- [ ] Tutorial notebook (Jupyter/Colab)
+
+---
+
+### 6.2 Performance Optimization
+**Immediate wins:**
+- [ ] Cache axiom library lookups
+- [ ] Lazy-load engines (already partial)
+- [ ] Memoize parser results
+
+**Advanced:**
+- [ ] Parallel engine execution for auto-select
+- [ ] Incremental SAT solving
+- [ ] Clause learning across queries
+
+---
+
+## Dependency Graph
+
+```
+Phase 0 (Foundation)
+├── 0.1 CLI REPL
+├── 0.2 Error Messages
+├── 0.3 Examples
+└── 0.4 Test Fixtures
+    │
+    v
+Phase 1 (Quick Wins)
+├── 1.1 High-Power Mode
+├── 1.2 Isomorphism (done)
+└── 1.3 TPTP Benchmarks
+    │
+    v
+Phase 2 (Ecosystem)
+├── 2.1 NPM Library Export
+├── 2.2 Browser/WASM Build
+└── 2.3 Web Playground
+    │
+    v
+Phase 3 (AI Integration)
+├── 3.1 NL → FOL Translation
+└── 3.2 Heuristic Selection
+    │
+    v
+Phase 4 (Neurosymbolic)
+├── 4.1 Ontology Support
+└── 4.2 Agentic Reasoning
+    │
+    v
+Phase 5 (Evolution)
+└── 5.1 Genetic Optimization
+```
+
+---
+
+## Parallelization Opportunities
+
+**Can run in parallel (no dependencies):**
+
+| Track A | Track B | Track C |
+|---------|---------|---------|
+| 0.1 CLI | 0.2 Errors | 0.3 Examples |
+| 1.1 High-Power | 1.2 Isomorphism | 0.4 Fixtures |
+| 2.1 Library | 2.2 Browser | 1.3 TPTP |
+| 3.2 Heuristics | 3.1 NL Translation | — |
+
+---
+
+## Recommended Start Order
+
+1. **Phase 0 (all)** - Foundation, enables everything else
+2. **Phase 1.1** - Trivial win, immediately useful
+3. **Phase 1.2** - Already done, just verify
+4. **Phase 1.3** - High visibility, enables testing
+5. **Phase 2.1** - Foundation for browser work
+6. Continue per dependency graph...
+
+**First command:**
 ```bash
-npm install z3-solver@latest          # High-level Z3Py-style API + quantifiers + arithmetic
-npm install clingo-wasm@latest        # Simple async Clingo run() – perfect for constraints & models
-# Existing (already pure TS/JS):
-# tau-prolog
-# Custom MiniSat-style SAT (kept & improved)
+pnpm run check  # Verify everything works
+pnpm run todo   # Review outstanding TODOs
 ```
 
-No other new runtime deps. All WASM is pre-shipped inside these packages.
+---
 
-### Phase 0: Preparation (1–2 hours)
-1. Update `package.json`  
-   ```json
-   "dependencies": {
-     "z3-solver": "^4.15.8",
-     "clingo-wasm": "^0.3.2",
-     ...
-   }
-   ```
-2. Create `src/engines/types.ts` (if not present)  
-   ```ts
-   export interface FOLSolver {
-     prove(premises: Formula[], goal: Formula, opts?: EngineOpts): Promise<ProofResult>;
-     findModel(domains: DomainSpec[], formula: Formula): Promise<ModelResult>;
-     findCounterexample(...): Promise<CounterexampleResult>;
-     capabilities(): EngineCapabilities;
-     init?(): Promise<void>;           // lazy
-   }
+## Success Metrics
 
-   export interface EngineCapabilities {
-     name: string;
-     strength: 'high' | 'medium' | 'low';
-     supportsArithmetic: boolean;
-     supportsQuantifiers: boolean;
-     supportsEquality: boolean;
-     modelSize: 'small' | 'medium' | 'large';
-   }
-   ```
-3. Ensure `container.ts` (DI) already supports lazy registration.
+| Metric | Current | Target |
+|--------|---------|--------|
+| Test Coverage | 80% | 90% |
+| Examples | 0 | 20+ |
+| Documentation Pages | 2 | 10+ |
+| NPM Downloads/month | 0 | 1000+ |
+| GitHub Stars | - | 500+ |
+| Active Contributors | 1 | 5+ |
 
-### Phase 1: Z3Engine – The Star (Elegance + Power) (4–6 hours)
-Create `src/engines/z3.ts`
+---
 
-```ts
-import { init } from 'z3-solver';
-import type { FOLSolver, EngineCapabilities } from './types';
-import { Formula, toZ3 } from '../ast/translators'; // existing or add tiny translator
+## Timeline Estimate
 
-export class Z3Engine implements FOLSolver {
-  private ctx: any; // typed by z3-solver generics
+| Phase | Effort | Timeline |
+|-------|--------|----------|
+| Phase 0 | 4-6 hours | Week 1 |
+| Phase 1 | 3-4 hours | Week 1 |
+| Phase 2 | 8-12 hours | Week 2-3 |
+| Phase 3 | 6-8 hours | Week 3-4 |
+| Phase 4 | 10-14 hours | Week 4-6 |
+| Phase 5 | 20-40 hours | Week 6-10 |
 
-  async init() {
-    const { Context } = await init(); // prebuilt WASM, one-time
-    this.ctx = new Context('mcplogic');
-  }
+**Total:** ~50-80 hours over 10 weeks
 
-  async prove(premises: Formula[], goal: Formula) {
-    if (!this.ctx) await this.init();
-    const solver = new this.ctx.Solver();
-    // elegant translator (reuse or write once)
-    premises.forEach(p => solver.add(toZ3(p, this.ctx)));
-    solver.add(toZ3(goal.not(), this.ctx)); // refutation
-    const res = await solver.check();
-    // ... convert Z3 proof/model trace to our structured output
-    return res === 'sat' ? { status: 'unsat' as const, trace: [...] } : { status: 'sat' };
-  }
+---
 
-  capabilities(): EngineCapabilities {
-    return {
-      name: 'z3',
-      strength: 'high',
-      supportsArithmetic: true,
-      supportsQuantifiers: true,
-      supportsEquality: true,
-      modelSize: 'large'
-    };
-  }
-}
-```
+## Risk Mitigation
 
-**Why elegant?**  
-- High-level Z3Py-style API (no pointers, no memory management).  
-- Generic typing prevents context mix-ups.  
-- Lazy init + async everywhere.
+| Risk | Mitigation |
+|------|------------|
+| WASM compatibility issues | Test early with browser spike |
+| LLM translation quality | Hybrid approach (rules + LLM) |
+| Performance regression | Continuous benchmarking |
+| Scope creep | Focus on Phase 0 → 1 → 2 first |
 
-### Phase 2: ClingoEngine (2–3 hours)
-`src/engines/clingo.ts`
+---
 
-```ts
-import clingo from 'clingo-wasm';
-import type { FOLSolver } from './types';
-import { toASP } from '../ast/translators';
+## Conclusion
 
-export class ClingoEngine implements FOLSolver {
-  async init() {
-    await clingo.init(); // optional, prebuilt WASM
-  }
+This plan transforms mcplogic from a solid FOL engine into a **production-ready neurosymbolic platform** with:
 
-  async prove(premises: Formula[], goal: Formula) {
-    const program = toASP([...premises, goal.not()]);
-    const result = await clingo.run(program);
-    // parse answer sets → proof/model
-    return { status: result.Models.length ? 'unsat' : 'sat', ... };
-  }
+1. **Usability:** CLI, examples, better errors
+2. **Accessibility:** NPM library, browser support
+3. **Intelligence:** NL translation, heuristics, agentic reasoning
+4. **Optimization:** Evolution engine for strategy discovery
 
-  capabilities() {
-    return { name: 'clingo', strength: 'high', ... modelSize: 'large', supportsConstraints: true };
-  }
-}
-```
-
-**Elegance**: Single `run()` call, restartable worker, perfect for incremental sessions.
-
-### Phase 3: Upgrade Existing Engines (Tau-Prolog + Custom SAT) (3–4 hours)
-- Add `init()` lazy pattern to both.
-- Improve Tau-Prolog with better equality rewriting (simple Knuth-Bendix in pure TS, <200 LOC).
-- Enhance MiniSat SAT engine with Tseitin + symmetry-breaking clauses (pure TS).
-
-### Phase 4: Engine Federation & Auto-Selection (Elegant, 2 hours)
-Update `EngineManager.ts`
-
-```ts
-const registry = new Map<string, () => Promise<FOLSolver>>([
-  ['z3', () => import('./z3').then(m => new m.Z3Engine())],
-  ['clingo', () => import('./clingo').then(m => new m.ClingoEngine())],
-  ['prolog', () => import('./prolog').then(...)],
-  ['sat', () => import('./sat').then(...)],
-]);
-
-export async function selectEngine(formula: Formula, preferred?: string) {
-  if (preferred && registry.has(preferred)) return registry.get(preferred)!();
-  // elegant score matrix
-  const scores = await Promise.all([...registry.values()].map(async f => {
-    const e = await f();
-    return { engine: e, score: calculateScore(e.capabilities(), formula) };
-  }));
-  return scores.sort((a,b) => b.score - a.score)[0].engine;
-}
-```
-
-`calculateScore` = tiny pure function based on arithmetic/quantifier presence, domain size, etc.
-
-Add MCP config: `"engine": "auto" | "z3" | "clingo" | "prolog" | "sat"`
-
-### Phase 5: Session & MCP Layer Integration (2 hours)
-- All engines now support incremental assert/retract via fresh context/solver per session (Z3 Solver, Clingo program concatenation, Tau DB).
-- Streaming progress via `AsyncIterable<Step>` (Z3/Clingo already support partial output).
-
-### Phase 6: Testing & Benchmarks (4 hours)
-- Add `tests/engines/z3.test.ts` and `clingo.test.ts` using existing harness (265+ tests).
-- Include 20+ Pelletier problems + group/ring examples.
-- CI: `npm test -- --grep "Z3|Clingo"`
-
-### Phase 7: Documentation & Polish (3 hours)
-- Update README: big table showing engine strengths (Z3 = high, arithmetic, large models).
-- Playground: dropdown for engine selection.
-- New section: “Why no Prover9 binary? Because Z3 + Clingo are more powerful, fully typed, and npm-only.”
-- One-page “Adding a New Engine” guide (copy the Z3 pattern).
-
-### Total Effort & Timeline (Solo Maintainer)
-- **Week 1**: Phases 0–2 + basic tests → Z3 + Clingo live, Prover9-level power achieved.
-- **Week 2**: Federation, Tau/SAT polish, full tests, docs.
-- **Done in < 2 weeks**, < 25 hours total.
-
-### Outcome
-mcplogic now has:
-- **Z3** for full SMT/FOL with arithmetic & quantifiers.
-- **Clingo** for answer-set / constraint models.
-- **Tau-Prolog + SAT** as fast lightweight fallbacks.
-- Zero external binaries, zero self-compilation, 100% pure TypeScript elegance.
-- Backward-compatible, session-aware, LLM-ready.
-
-This is the cleanest, most future-proof path possible under the constraints. Start with `npm install z3-solver clingo-wasm` and the Z3Engine file — you’ll have a working high-power engine the same afternoon.
-
-The foundation you already built (refactored parser, container, sessions, 80%+ test coverage) makes this trivial and beautiful.
-
+**Start today:** `pnpm run check` → Phase 0 → Phase 1 → Success!

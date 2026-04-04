@@ -253,23 +253,49 @@ async function runRepl(highPower: boolean) {
         prompt: 'mcplogic> '
     });
 
-    console.log(`MCP Logic REPL v${VERSION}${highPower ? ' [HIGH-POWER]' : ''}`);
-    console.log('Commands: .assert <formula>, .prove <goal>, .list, .clear, .quit, .help\n');
-    rl.prompt();
+console.log(`MCP Logic REPL v${VERSION}${highPower ? ' [HIGH-POWER]' : ''}`);
+  console.log(`Commands: .assert <formula>, .prove <goal>, .model, .list, .load <file>, .clear, .quit, .help\n`);
+  rl.prompt();
 
     rl.on('line', async (line) => {
         const trimmed = line.trim();
 
-        if (trimmed === '.help') {
-            console.log('Commands:');
-            console.log('  .assert <formula>   Add a premise to the session');
-            console.log('  .tell <text>        Translate natural language and assert');
-            console.log('  .prove <goal>       Try to prove goal from premises');
-            console.log('  .list               List current premises');
-            console.log('  .clear              Clear all premises');
-            console.log('  .quit, .exit, .q    Exit REPL');
-            console.log('  .help               Show this help');
-        } else if (trimmed.startsWith('.tell ')) {
+if (trimmed === '.help') {
+    console.log('Commands:');
+    console.log(' .assert <formula> Add a premise to the session');
+    console.log(' .tell <text> Translate natural language and assert');
+    console.log(' .prove <goal> Try to prove goal from premises');
+    console.log(' .model <goal> Find model for goal (satisfiability)');
+    console.log(' .load <file> Load and assert formulas from .p file');
+    console.log(' .list List current premises');
+    console.log(' .clear Clear all premises');
+    console.log(' .quit, .exit, .q Exit REPL');
+    console.log(' .help Show this help');
+    console.log('\nExamples:');
+    console.log(' .assert "all x (man(x) -> mortal(x))"');
+    console.log(' .assert "man(socrates)"');
+    console.log(' .prove "mortal(socrates)"');
+    console.log(' .load examples/01-socrates.p');
+        } else if (trimmed.startsWith('.load ')) {
+    const file = trimmed.slice(6).trim();
+    try {
+      if (!existsSync(file)) {
+        console.log(`✗ File not found: ${file}`);
+      } else {
+        const content = readFileSync(file, 'utf-8');
+        const lines = content.split('\n')
+          .map(l => l.trim())
+          .filter(l => l && !l.startsWith('#') && !l.startsWith('%'));
+        for (const formula of lines) {
+          agent.assert(formula);
+          console.log(`✓ ${formula}`);
+        }
+        console.log(`(Loaded ${lines.length} formulas, ${agent.getPremises().length} total premises)`);
+      }
+    } catch (e) {
+      console.log(`✗ ${(e as Error).message}`);
+    }
+  } else if (trimmed.startsWith('.tell ')) {
             const text = trimmed.slice(6).trim();
             try {
                 const formulas = await agent.translate(text);
@@ -310,10 +336,25 @@ async function runRepl(highPower: boolean) {
                         console.log(`- [${s.action.type}] ${s.action.content} -> ${s.action.explanation || ''}`);
                     });
                 }
-            } catch (e) {
-                console.log(`✗ ${(e as Error).message}`);
-            }
-        } else if (trimmed === '.list') {
+} catch (e) {
+    console.log(`✗ ${(e as Error).message}`);
+  }
+} else if (trimmed.startsWith('.model ')) {
+  const goal = trimmed.slice(7).trim();
+  try {
+    const premises = agent.getPremises();
+    const finder = createModelFinder(30000, 10);
+    const result = await finder.findModel([...premises, goal]);
+    if (result.success) {
+      console.log('✓ SATISFIABLE - Model found:');
+      console.log(JSON.stringify(result.model, null, 2));
+    } else {
+      console.log('✗ UNSATISFIABLE - No model exists');
+    }
+  } catch (e) {
+    console.log(`✗ ${(e as Error).message}`);
+  }
+} else if (trimmed === '.list') {
             const premises = agent.getPremises();
             if (premises.length === 0) {
                 console.log('(no premises)');

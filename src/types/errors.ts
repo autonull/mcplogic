@@ -70,65 +70,99 @@ export class LogicException extends Error {
 }
 
 /**
+ * Documentation link for syntax help
+ */
+export const SYNTAX_DOCS_URL = 'https://github.com/anomalyco/mcplogic#syntax-reference';
+
+/**
  * Common syntax error patterns and their suggestions
  */
 const SYNTAX_SUGGESTIONS: Array<{
   pattern: RegExp;
   suggestion: string;
+  example?: string;
 }> = [
-    {
-      pattern: /\([^)]*$/,
-      suggestion: "Unbalanced parentheses - missing closing ')'"
-    },
-    {
-      pattern: /^[^(]*\)/,
-      suggestion: "Unbalanced parentheses - missing opening '('"
-    },
-    {
-      pattern: /\bAll\b/,
-      suggestion: "Use lowercase 'all' for universal quantifier"
-    },
-    {
-      pattern: /\bExists\b/,
-      suggestion: "Use lowercase 'exists' for existential quantifier"
-    },
-    {
-      pattern: /->\s*$/,
-      suggestion: "Incomplete implication - missing consequent after '->'"
-    },
-    {
-      pattern: /<->\s*$/,
-      suggestion: "Incomplete biconditional - missing right side after '<->'"
-    },
-    {
-      pattern: /&\s*$/,
-      suggestion: "Incomplete conjunction - missing right operand after '&'"
-    },
-    {
-      pattern: /\|\s*$/,
-      suggestion: "Incomplete disjunction - missing right operand after '|'"
-    },
-    {
-      pattern: /^\s*-\s*$/,
-      suggestion: "Incomplete negation - missing operand after '-'"
-    },
-    {
-      pattern: /\ball\s+[A-Z]/,
-      suggestion: "Quantified variables should be lowercase (e.g., 'all x' not 'all X')"
-    },
-    {
-      pattern: /\bexists\s+[A-Z]/,
-      suggestion: "Quantified variables should be lowercase (e.g., 'exists x' not 'exists X')"
-    },
-    {
-      pattern: /[a-z]+\s*\(\s*\)/,
-      suggestion: "Predicate has empty argument list - provide at least one argument"
-    },
-    {
-      pattern: /,,/,
-      suggestion: "Double comma in argument list - remove extra comma"
-    },
-  ];
+  {
+    pattern: /\([^)]*$/,
+    suggestion: "Unbalanced parentheses - missing closing ')'",
+    example: "P(x, y"
+  },
+  {
+    pattern: /^[^(]*\)/,
+    suggestion: "Unbalanced parentheses - missing opening '('",
+    example: "x, y)"
+  },
+  {
+    pattern: /\bAll\b/,
+    suggestion: "Use lowercase 'all' for universal quantifier",
+    example: "All x (man(x) -> mortal(x))"
+  },
+  {
+    pattern: /\bExists\b/,
+    suggestion: "Use lowercase 'exists' for existential quantifier",
+    example: "exists x (king(x))"
+  },
+  {
+    pattern: /->\s*$/,
+    suggestion: "Incomplete implication - missing consequent after '->'",
+    example: "man(socrates) ->"
+  },
+  {
+    pattern: /<->\s*$/,
+    suggestion: "Incomplete biconditional - missing right side after '<->'",
+    example: "P(x) <->"
+  },
+  {
+    pattern: /&\s*$/,
+    suggestion: "Incomplete conjunction - missing right operand after '&'",
+    example: "P(x) &"
+  },
+  {
+    pattern: /\|\s*$/,
+    suggestion: "Incomplete disjunction - missing right operand after '|'",
+    example: "P(x) |"
+  },
+  {
+    pattern: /^\s*-\s*$/,
+    suggestion: "Incomplete negation - missing operand after '-'",
+    example: "-"
+  },
+  {
+    pattern: /\ball\s+[A-Z]/,
+    suggestion: "Quantified variables should be lowercase",
+    example: "all X (P(X)) -> all x (P(x))"
+  },
+  {
+    pattern: /\bexists\s+[A-Z]/,
+    suggestion: "Quantified variables should be lowercase",
+    example: "exists X (P(X)) -> exists x (P(x))"
+  },
+  {
+    pattern: /[a-z]+\s*\(\s*\)/,
+    suggestion: "Predicate has empty argument list",
+    example: "P() -> P(x)"
+  },
+  {
+    pattern: /,,/,
+    suggestion: "Double comma in argument list",
+    example: "P(x,,y) -> P(x, y)"
+  },
+  {
+    pattern: /\b[Nn]ot\b/,
+    suggestion: "Use '-' for negation, not 'not' or 'Not'",
+    example: "not P(x) -> -P(x)"
+  },
+  {
+    pattern: /\b[A-Z][a-z]/,
+    suggestion: "Predicates should be lowercase, constants uppercase",
+    example: "Man(socrates) -> man(socrates)"
+  },
+  {
+    pattern: /=\s*[^=]/,
+    suggestion: "Use '=' for equality, '==' is not supported",
+    example: "x == y -> x = y"
+  },
+];
 
 /**
  * Get a suggestion for a syntax error based on the input
@@ -349,4 +383,35 @@ export function createGenericError(
     message,
     details,
   });
+}
+
+export function enhanceError(error: LogicError | LogicException): string {
+  const err = error instanceof LogicException ? error.error : error;
+  let result = `\x1b[31m${err.code}: ${err.message}\x1b[0m`;
+  
+  if (err.span) {
+    result += `\nPosition: line ${err.span.line}, col ${err.span.col}`;
+  }
+  
+  if (err.context) {
+    result += `\nFormula: ${err.context}`;
+  }
+  
+  if (err.suggestion) {
+    const matched = SYNTAX_SUGGESTIONS.find(s => 
+      err.context && s.pattern.test(err.context)
+    );
+    result += `\n\nTip: ${err.suggestion}`;
+    if (matched?.example) {
+      result += `\nExample: "${matched.example}"`;
+    }
+  }
+  
+  result += `\n\nSyntax Reference: ${SYNTAX_DOCS_URL}`;
+  
+  if (err.details && Object.keys(err.details).length > 0) {
+    result += `\n\nDetails: ${JSON.stringify(err.details)}`;
+  }
+  
+  return result;
 }

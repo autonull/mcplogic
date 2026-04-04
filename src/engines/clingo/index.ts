@@ -1,7 +1,5 @@
 import { ReasoningEngine, EngineCapabilities, EngineProveOptions, SatResult, EngineSession } from '../interface.js';
-import { ProveResult, createEngineError } from '../../types/index.js';
-import { buildProveResult } from '../../utils/response.js';
-
+import { ProveResult } from '../../types/index.js';
 import { buildProveResult } from '../../utils/response.js';
 import { clausify } from '../../logic/clausifier.js';
 import { clausesToASP } from './translator.js';
