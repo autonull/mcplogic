@@ -127,21 +127,12 @@ export function getFreeVariables(ast: ASTNode, bound: Set<string> = new Set()): 
  */
 export function containsEquality(ast: ASTNode): boolean {
     let found = false;
-    try {
-        traverse(ast, (node) => {
-            if (node.type === 'equals') {
-                found = true;
-                throw 'Found'; // Early exit hack
-            }
-            if (node.type === 'predicate' && (node.name === 'eq' || node.name === 'equals')) {
-                found = true;
-                throw 'Found';
-            }
-        });
-    } catch (e) {
-        if (e === 'Found') return true;
-        throw e;
-    }
+    traverse(ast, (node) => {
+        if (node.type === 'equals' || (node.type === 'predicate' && (node.name === 'eq' || node.name === 'equals'))) {
+            found = true;
+            return false; // Early exit
+        }
+    });
     return found;
 }
 

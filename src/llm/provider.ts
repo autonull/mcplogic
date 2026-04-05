@@ -71,11 +71,11 @@ export class StandardLLMProvider implements LLMProvider {
         try {
             const res = await fetch(`${this.ollamaBaseUrl}/api/tags`);
             if (res.ok) {
-                const data = await res.json();
+                const data = await res.json() as { models?: Array<{ name: string }> };
                 const models = data.models || [];
                 if (models.length > 0) {
                     // Try to find a llama model first, otherwise just use the first available model
-                    const llama = models.find((m: any) => m.name.includes('llama'));
+                    const llama = models.find(m => m.name.includes('llama'));
                     return llama ? llama.name : models[0].name;
                 }
             }

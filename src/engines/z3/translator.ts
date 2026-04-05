@@ -79,7 +79,7 @@ export class Z3Translator {
     private translateQuantifier(node: ASTNode): Z3Expr {
         const varName = node.variable!;
         // Use Const for bound variable definition in quantifiers
-        const z3Var = this.ctx.Const(varName, this.sort as any);
+        const z3Var = this.ctx.Const(varName, this.sort);
 
         const prev = this.boundVars.get(varName);
         this.boundVars.set(varName, z3Var);
@@ -90,11 +90,10 @@ export class Z3Translator {
         else this.boundVars.delete(varName);
 
         // ForAll/Exists expects array of Consts
-        // We cast to unknown and then to the required type
         if (node.type === 'forall') {
-            return this.ctx.ForAll([z3Var as any], body);
+            return this.ctx.ForAll([z3Var], body);
         } else {
-            return this.ctx.Exists([z3Var as any], body);
+            return this.ctx.Exists([z3Var], body);
         }
     }
 
@@ -120,13 +119,13 @@ export class Z3Translator {
         }
 
         if (!this.predicates.has(name)) {
-            const domain = args.map(() => this.sort as any);
+            const domain = args.map(() => this.sort);
             // Function.declare(name, ...domain, range)
             const decl = this.ctx.Function.declare(name, ...domain, this.ctx.Bool.sort());
             this.predicates.set(name, decl);
         }
 
-        const decl = this.predicates.get(name) as any;
+        const decl = this.predicates.get(name) as { call: (...a: unknown[]) => Z3Expr };
         return decl.call(...args);
     }
 
@@ -153,12 +152,12 @@ export class Z3Translator {
         }
 
         if (!this.functions.has(name)) {
-             const domain = args.map(() => this.sort as any);
-             const decl = this.ctx.Function.declare(name, ...domain, this.sort as any);
+             const domain = args.map(() => this.sort);
+             const decl = this.ctx.Function.declare(name, ...domain, this.sort);
              this.functions.set(name, decl);
         }
 
-        const decl = this.functions.get(name) as any;
+        const decl = this.functions.get(name) as { call: (...a: unknown[]) => Z3Expr };
         return decl.call(...args);
     }
 
@@ -178,7 +177,7 @@ export class Z3Translator {
         }
 
         if (!this.constants.has(name)) {
-            const c = this.ctx.Const(name, this.sort as any);
+            const c = this.ctx.Const(name, this.sort);
             this.constants.set(name, c);
         }
 
