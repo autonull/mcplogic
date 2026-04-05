@@ -39,20 +39,15 @@ export function skolemize(node: ASTNode, env: SkolemEnv): ASTNode {
 
         case 'variable': {
             const skolem = env.skolemMap.get(node.name!);
-            if (skolem) {
-                if (skolem.args.length === 0) {
-                    // Skolem constant
-                    return { type: 'constant', name: skolem.name };
-                } else {
-                    // Skolem function
-                    return {
-                        type: 'function',
-                        name: skolem.name,
-                        args: skolem.args.map(v => ({ type: 'variable', name: v })),
-                    };
-                }
-            }
-            return node;
+            if (!skolem) return node;
+
+            return skolem.args.length === 0
+                ? { type: 'constant', name: skolem.name }
+                : {
+                    type: 'function',
+                    name: skolem.name,
+                    args: skolem.args.map(v => ({ type: 'variable', name: v })),
+                };
         }
 
         case 'and':
