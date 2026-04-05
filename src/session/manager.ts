@@ -64,8 +64,6 @@ export class SessionManager {
     private sessions = new Map<string, Session>();
     private locks = new Map<string, Promise<void>>();
     private gcIntervalId: ReturnType<typeof setInterval> | null = null;
-    private engineManager?: EngineManager;
-    private storage?: SessionStorage;
 
     /** GC runs every minute */
     private readonly gcIntervalMs = 60_000;
@@ -76,9 +74,7 @@ export class SessionManager {
     /** Maximum number of concurrent sessions */
     static readonly MAX_SESSIONS = 1000;
 
-    constructor(engineManager?: EngineManager, storage?: SessionStorage) {
-        this.engineManager = engineManager;
-        this.storage = storage;
+    constructor(private engineManager?: EngineManager, private storage?: SessionStorage) {
         // Start garbage collection
         this.gcIntervalId = setInterval(() => this.gc(), this.gcIntervalMs);
 

@@ -5,7 +5,7 @@
  * via the MCP resources protocol.
  */
 
-import { CategoricalHelpers, monoidAxioms, groupAxioms } from '../axioms/categorical.js';
+import { categoryAxioms, monoidAxioms, groupAxioms } from '../axioms/categorical.js';
 
 /**
  * Resource definition
@@ -112,16 +112,6 @@ export const EQUIVALENCE_AXIOMS = [
     'all X all Y all Z ((equiv(X, Y) & equiv(Y, Z)) -> equiv(X, Z))',
 ];
 
-// Lazy-initialized helpers
-let categoricalHelpers: CategoricalHelpers | null = null;
-
-function getCategoricalHelpers(): CategoricalHelpers {
-    if (!categoricalHelpers) {
-        categoricalHelpers = new CategoricalHelpers();
-    }
-    return categoricalHelpers;
-}
-
 /**
  * Peano arithmetic axioms
  */
@@ -227,7 +217,7 @@ function syllogismPatterns(): string[] {
 export function getResourceContent(uri: string): string | null {
     switch (uri) {
         case 'logic://axioms/category':
-            return formatAxioms('Category Theory Axioms', getCategoricalHelpers().categoryAxioms());
+            return formatAxioms('Category Theory Axioms', categoryAxioms());
         case 'logic://axioms/monoid':
             return formatAxioms('Monoid Axioms', monoidAxioms());
         case 'logic://axioms/group':

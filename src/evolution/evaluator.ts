@@ -8,13 +8,7 @@ import { astToString } from '../ast/index.js';
 import { parseLLMOutput } from '../llm/outputParser.js';
 
 export class Evaluator {
-    private db: IPerformanceDatabase;
-    private llm: LLMProvider;
-
-    constructor(db: IPerformanceDatabase, llm: LLMProvider) {
-        this.db = db;
-        this.llm = llm;
-    }
+    constructor(private db: IPerformanceDatabase, private llm: LLMProvider) {}
 
     async evaluate(strategy: EvolutionStrategy, testCase: EvaluationCase): Promise<EvaluationResult> {
         const startTime = Date.now();

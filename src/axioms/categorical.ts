@@ -12,123 +12,110 @@ export interface CommutativityResult {
 
 /**
  * Categorical reasoning helpers for first-order logic
+ * Refactored to pure functions for better composition and simplicity.
  */
-export class CategoricalHelpers {
-    /**
-     * Generate basic category theory axioms
-     */
-    categoryAxioms(): string[] {
-        return [
-            // Identity morphisms exist
-            'all x (object(x) -> exists i (morphism(i) & source(i,x) & target(i,x) & identity(i,x)))',
-            // Identity is unique
-            'all x all i1 all i2 ((identity(i1,x) & identity(i2,x)) -> i1 = i2)',
-            // Composition exists when source/target match
-            'all f all g ((morphism(f) & morphism(g) & target(f) = source(g)) -> exists h (morphism(h) & compose(g,f,h)))',
-            // Composition is associative
-            'all f all g all h all fg all gh all fgh all gfh ((compose(g,f,fg) & compose(h,g,gh) & compose(h,fg,fgh) & compose(gh,f,gfh)) -> fgh = gfh)',
-            // Left identity law
-            'all f all a all id ((morphism(f) & source(f,a) & identity(id,a) & compose(f,id,comp)) -> comp = f)',
-            // Right identity law
-            'all f all b all id ((morphism(f) & target(f,b) & identity(id,b) & compose(id,f,comp)) -> comp = f)'
-        ];
+
+/**
+ * Generate basic category theory axioms
+ */
+export function categoryAxioms(): string[] {
+    return [
+        // Identity morphisms exist
+        'all x (object(x) -> exists i (morphism(i) & source(i,x) & target(i,x) & identity(i,x)))',
+        // Identity is unique
+        'all x all i1 all i2 ((identity(i1,x) & identity(i2,x)) -> i1 = i2)',
+        // Composition exists when source/target match
+        'all f all g ((morphism(f) & morphism(g) & target(f) = source(g)) -> exists h (morphism(h) & compose(g,f,h)))',
+        // Composition is associative
+        'all f all g all h all fg all gh all fgh all gfh ((compose(g,f,fg) & compose(h,g,gh) & compose(h,fg,fgh) & compose(gh,f,gfh)) -> fgh = gfh)',
+        // Left identity law
+        'all f all a all id ((morphism(f) & source(f,a) & identity(id,a) & compose(f,id,comp)) -> comp = f)',
+        // Right identity law
+        'all f all b all id ((morphism(f) & target(f,b) & identity(id,b) & compose(id,f,comp)) -> comp = f)'
+    ];
+}
+
+/**
+ * Generate functor axioms
+ */
+export function functorAxioms(functorName: string = 'F'): string[] {
+    const f = functorName.toLowerCase();
+    return [
+        // Functor preserves identity
+        `all x all id (identity(id,x) -> identity(${f}(id), ${f}(x)))`,
+        // Functor preserves composition
+        `all g all h all gh ((compose(g,h,gh)) -> compose(${f}(g), ${f}(h), ${f}(gh)))`
+    ];
+}
+
+/**
+ * Helper to generate composition premises for a path
+ */
+function composePathHelper(path: string[], resultName: string): { premises: string[]; result: string } {
+    if (path.length === 1) return { premises: [], result: path[0] };
+
+    const premises: string[] = [];
+    let current = path[0];
+
+    for (let i = 1; i < path.length; i++) {
+        const tempName = i < path.length - 1 ? `${resultName}_temp_${i}` : resultName;
+        premises.push(`compose(${path[i]}, ${current}, ${tempName})`);
+        current = tempName;
     }
 
-    /**
-     * Generate functor axioms
-     */
-    functorAxioms(functorName: string = 'F'): string[] {
-        const f = functorName.toLowerCase();
-        return [
-            // Functor preserves identity
-            `all x all id (identity(id,x) -> identity(${f}(id), ${f}(x)))`,
-            // Functor preserves composition
-            `all g all h all gh ((compose(g,h,gh)) -> compose(${f}(g), ${f}(h), ${f}(gh)))`
-        ];
-    }
+    return { premises, result: current };
+}
 
-    /**
-     * Generate FOL to verify diagram commutativity
-     * 
-     * Two paths commute if composing morphisms along each yields the same result.
-     */
-    verifyCommutativity(
-        pathA: string[],
-        pathB: string[],
-        objectStart: string,
-        objectEnd: string
-    ): CommutativityResult {
-        const premises: string[] = [];
+/**
+ * Generate FOL to verify diagram commutativity
+ *
+ * Two paths commute if composing morphisms along each yields the same result.
+ */
+export function verifyCommutativity(
+    pathA: string[],
+    pathB: string[],
+    objectStart: string,
+    objectEnd: string
+): CommutativityResult {
+    const premises: string[] = [];
 
-        // Define morphisms for both paths
-        for (const path of [pathA, pathB]) {
-            let i = 0;
-            for (const morph of path) {
-                premises.push(`morphism(${morph})`);
-                if (i === 0) {
-                    premises.push(`source(${morph}, ${objectStart})`);
-                }
-                if (i === path.length - 1) {
-                    premises.push(`target(${morph}, ${objectEnd})`);
-                }
-                i++;
-            }
+    // Define morphisms for both paths
+    for (const path of [pathA, pathB]) {
+        let i = 0;
+        for (const morph of path) {
+            premises.push(`morphism(${morph})`);
+            if (i === 0) premises.push(`source(${morph}, ${objectStart})`);
+            if (i === path.length - 1) premises.push(`target(${morph}, ${objectEnd})`);
+            i++;
         }
-
-        // Compose paths
-        const compA = this.composePathHelper(pathA, 'comp_a');
-        const compB = this.composePathHelper(pathB, 'comp_b');
-
-        premises.push(...compA.premises);
-        premises.push(...compB.premises);
-
-        // Conclusion: composed paths are equal
-        const conclusion = `${compA.result} = ${compB.result}`;
-
-        return { premises, conclusion };
     }
 
-    /**
-     * Generate naturality condition for natural transformation
-     * 
-     * For α: F ⇒ G, the naturality square must commute:
-     * G(f) ∘ α_A = α_B ∘ F(f)
-     */
-    naturalTransformationCondition(
-        functorF: string = 'F',
-        functorG: string = 'G',
-        component: string = 'alpha'
-    ): string[] {
-        const fLower = functorF.toLowerCase();
-        const gLower = functorG.toLowerCase();
+    // Compose paths
+    const compA = composePathHelper(pathA, 'comp_a');
+    const compB = composePathHelper(pathB, 'comp_b');
 
-        return [
-            `all morph all a all b ((morphism(morph) & source(morph,a) & target(morph,b)) -> exists comp1 exists comp2 (compose(${gLower}(morph), ${component}(a), comp1) & compose(${component}(b), ${fLower}(morph), comp2) & comp1 = comp2))`
-        ];
-    }
+    premises.push(...compA.premises, ...compB.premises);
 
-    /**
-     * Helper to generate composition premises for a path
-     */
-    private composePathHelper(
-        path: string[],
-        resultName: string
-    ): { premises: string[]; result: string } {
-        if (path.length === 1) {
-            return { premises: [], result: path[0] };
-        }
+    return { premises, conclusion: `${compA.result} = ${compB.result}` };
+}
 
-        const premises: string[] = [];
-        let current = path[0];
+/**
+ * Generate naturality condition for natural transformation
+ *
+ * For α: F ⇒ G, the naturality square must commute:
+ * G(f) ∘ α_A = α_B ∘ F(f)
+ */
+export function naturalTransformationCondition(
+    functorF: string = 'F',
+    functorG: string = 'G',
+    component: string = 'alpha'
+): string[] {
+    const fLower = functorF.toLowerCase();
+    const gLower = functorG.toLowerCase();
 
-        for (let i = 1; i < path.length; i++) {
-            const tempName = i < path.length - 1 ? `${resultName}_temp_${i}` : resultName;
-            premises.push(`compose(${path[i]}, ${current}, ${tempName})`);
-            current = tempName;
-        }
-
-        return { premises, result: current };
-    }
+    return [
+        `all morph all a all b ((morphism(morph) & source(morph,a) & target(morph,b)) -> exists comp1 exists comp2 (compose(${gLower}(morph), ${component}(a), comp1) & compose(${component}(b), ${fLower}(morph), comp2) & comp1 = comp2))`
+    ];
 }
 
 /**
@@ -156,5 +143,3 @@ export function groupAxioms(): string[] {
     ];
 }
 
-// Export singleton instance for convenience
-export const categoricalHelpers = new CategoricalHelpers();

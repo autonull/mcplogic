@@ -1,4 +1,11 @@
-import { CategoricalHelpers, monoidAxioms, groupAxioms } from '../axioms/categorical.js';
+import {
+    verifyCommutativity,
+    categoryAxioms,
+    functorAxioms,
+    naturalTransformationCondition,
+    monoidAxioms,
+    groupAxioms
+} from '../axioms/categorical.js';
 
 export interface CommutativityResponse {
     premises: string[];
@@ -18,22 +25,20 @@ export function verifyCommutativityHandler(
         object_start: string;
         object_end: string;
         with_category_axioms?: boolean;
-    },
-    categoricalHelpers: CategoricalHelpers
+    }
 ): CommutativityResponse {
     const { path_a, path_b, object_start, object_end, with_category_axioms = true } = args;
 
-    const { premises, conclusion } = categoricalHelpers.verifyCommutativity(
+    const { premises, conclusion } = verifyCommutativity(
         path_a,
         path_b,
         object_start,
         object_end
     );
 
-    let allPremises = premises;
-    if (with_category_axioms) {
-        allPremises = [...categoricalHelpers.categoryAxioms(), ...premises];
-    }
+    const allPremises = with_category_axioms
+        ? [...categoryAxioms(), ...premises]
+        : premises;
 
     return {
         premises: allPremises,
@@ -46,8 +51,7 @@ export function getCategoryAxiomsHandler(
     args: {
         concept: string;
         functor_name?: string;
-    },
-    categoricalHelpers: CategoricalHelpers
+    }
 ): AxiomsResponse {
     const { concept, functor_name = 'F' } = args;
 
@@ -55,13 +59,13 @@ export function getCategoryAxiomsHandler(
 
     switch (concept) {
         case 'category':
-            axioms = categoricalHelpers.categoryAxioms();
+            axioms = categoryAxioms();
             break;
         case 'functor':
-            axioms = categoricalHelpers.functorAxioms(functor_name);
+            axioms = functorAxioms(functor_name);
             break;
         case 'natural-transformation':
-            axioms = categoricalHelpers.naturalTransformationCondition();
+            axioms = naturalTransformationCondition();
             break;
         case 'monoid':
             axioms = monoidAxioms();
