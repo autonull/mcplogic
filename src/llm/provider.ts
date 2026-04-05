@@ -80,7 +80,8 @@ export class StandardLLMProvider implements LLMProvider {
                 }
             }
         } catch (e) {
-            // Ignore errors and fallback
+            // Ignore errors and fallback to default
+            console.debug(`Failed to fetch Ollama tags: ${e instanceof Error ? e.message : String(e)}`);
         }
 
         return 'llama3'; // ultimate fallback
