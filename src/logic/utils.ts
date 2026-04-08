@@ -22,11 +22,7 @@ export function createRefutation(premises: string[], conclusion: string): ASTNod
     // Combine all formulas with AND
     const allNodes = [...premiseNodes, negatedConclusion];
 
-    // If only one node (no premises), just use it. If multiple, reduce with AND.
-    // Note: createAnd takes 2 args.
-    if (allNodes.length === 0) {
-        throw new Error('Cannot create refutation with no formulas');
-    }
+    if (allNodes.length === 0) throw new Error('Cannot create refutation with no formulas');
 
     return allNodes.reduce((acc, node) => createAnd(acc, node));
 }

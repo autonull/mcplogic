@@ -216,7 +216,7 @@ export class Z3Engine implements ReasoningEngine {
                 const atoms = new Set<string>();
                 for (const c of clauses) {
                     for (const lit of c.literals) {
-                        const args = (lit.args || []).map(a => (a as any).name || String(a));
+                        const args = (lit.args || []).map(a => ('name' in a && typeof a.name === 'string' ? a.name : String(a)));
                         atoms.add(`${lit.predicate}(${args.join(',')})`);
                     }
                 }
@@ -233,7 +233,7 @@ export class Z3Engine implements ReasoningEngine {
                     for (const c of clauses) {
                         let clauseSat = false;
                         for (const lit of c.literals) {
-                            const args = (lit.args || []).map(a => (a as any).name || String(a));
+                            const args = (lit.args || []).map(a => ('name' in a && typeof a.name === 'string' ? a.name : String(a)));
                             const key = `${lit.predicate}(${args.join(',')})`;
                             const val = assignment.has(key);
                             const litVal = lit.negated ? !val : val;

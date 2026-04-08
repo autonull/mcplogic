@@ -9,15 +9,11 @@ import { HeuristicTranslator } from '../llm/translator.js';
  * Routes input to the best available TranslationStrategy.
  */
 export class InputRouter {
-    private db: IPerformanceDatabase;
-    private defaultStrategy: EvolutionStrategy;
-    private provider: LLMProvider;
-
-    constructor(db: IPerformanceDatabase, defaultStrategy: EvolutionStrategy, provider: LLMProvider) {
-        this.db = db;
-        this.defaultStrategy = defaultStrategy;
-        this.provider = provider;
-    }
+    constructor(
+        private db: IPerformanceDatabase,
+        private defaultStrategy: EvolutionStrategy,
+        private provider: LLMProvider
+    ) {}
 
     /**
      * Selects and returns an instantiated TranslationStrategy ready to use.

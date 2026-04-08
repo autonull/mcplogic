@@ -8,7 +8,7 @@ import type { ModelFinder } from '../model/index.js';
 // Define global types for external libraries loaded via script tags
 declare global {
     interface Window {
-        pipeline: any;
+        pipeline: unknown;
     }
 }
 
@@ -28,7 +28,7 @@ const statusAi = document.getElementById('ai-status') as HTMLDivElement;
 // State
 const engine: LogicEngine = createLogicEngine();
 const modelFinder: ModelFinder = createModelFinder();
-let pipeline: any = null;
+let pipeline: ((...args: unknown[]) => Promise<Array<{ generated_text: string }>>) | null = null;
 
 // Logging
 function log(msg: string, type: 'info' | 'success' | 'error' | 'model' = 'info') {
@@ -165,14 +165,14 @@ btnAiConvert.addEventListener('click', async () => {
             // Using a small generic text generation model for demo
             // In a real app, we would fine-tune or use a better prompt
             // FLAN-T5 is good at instruction following
-            pipeline = await window.pipeline('text2text-generation', 'Xenova/LaMini-Flan-T5-783M');
+            pipeline = await (window.pipeline as (...args: unknown[]) => Promise<any>)('text2text-generation', 'Xenova/LaMini-Flan-T5-783M');
         }
 
         statusAi.textContent = 'Translating...';
 
         const prompt = `Translate the following natural language to First-Order Logic formulas. Use standard syntax like "all x P(x)" and "P(x) & Q(x)".\n\nInput: ${text}\n\nOutput:\n`;
 
-        const result = await pipeline(prompt, {
+        const result = await pipeline!(prompt, {
             max_new_tokens: 200,
             temperature: 0.1
         });

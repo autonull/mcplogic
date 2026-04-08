@@ -5,7 +5,7 @@
 import { parse } from '../src/parser/index.js';
 import { astToString } from '../src/ast/index.js';
 import { validateFormulas } from '../src/validation/syntax.js';
-import { CategoricalHelpers, monoidAxioms, groupAxioms } from '../src/axioms/categorical.js';
+import { categoryAxioms, functorAxioms, verifyCommutativity, monoidAxioms, groupAxioms } from '../src/axioms/categorical.js';
 import { ModelFinder } from '../src/model/index.js';
 import { FORMULAS, createTestModelFinder, expectModelFound } from './fixtures.js';
 
@@ -63,21 +63,19 @@ describe('SyntaxValidator', () => {
 });
 
 describe('CategoricalHelpers', () => {
-    const helpers = new CategoricalHelpers();
-
     test('generates category axioms', () => {
-        const axioms = helpers.categoryAxioms();
+        const axioms = categoryAxioms();
         expect(axioms.length).toBe(6);
         expect(axioms[0]).toContain('identity');
     });
 
     test('generates functor axioms', () => {
-        const axioms = helpers.functorAxioms('F');
+        const axioms = functorAxioms('F');
         expect(axioms.length).toBe(2);
     });
 
     test('verifies commutativity', () => {
-        const { premises, conclusion } = helpers.verifyCommutativity(
+        const { premises, conclusion } = verifyCommutativity(
             ['f', 'g'],
             ['h'],
             'A',

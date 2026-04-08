@@ -41,7 +41,6 @@ export class OntologyManager {
                         }
                     }
                 }
-                return node;
             });
 
             return astToString(ast);
@@ -75,7 +74,6 @@ export class OntologyManager {
             if (node.type === 'predicate' && node.name) {
                 predicates.add(node.name);
             }
-            return node;
         });
 
         // If strict ontology is enabled (relationships set is not empty)

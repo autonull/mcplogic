@@ -18,11 +18,7 @@ export function standardizeVariables(node: ASTNode): ASTNode {
                 renaming.set(oldVar, newVar);
                 const newBody = standardize(n.body!);
 
-                if (previousMapping) {
-                    renaming.set(oldVar, previousMapping);
-                } else {
-                    renaming.delete(oldVar);
-                }
+                previousMapping ? renaming.set(oldVar, previousMapping) : renaming.delete(oldVar);
 
                 return {
                     type: n.type,

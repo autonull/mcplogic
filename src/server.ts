@@ -78,11 +78,11 @@ const toolHandlers: Record<string, ToolHandler> = {
     'find-counterexample': (args, c, opts) =>
         Handlers.findCounterexampleHandler(args as unknown as FindCounterexampleHandlerArgs, c.modelFinder, args.verbosity, opts?.onProgress),
 
-    'verify-commutativity': (args, c) =>
-        Handlers.verifyCommutativityHandler(args as unknown as VerifyCommutativityHandlerArgs, c.categoricalHelpers),
+    'verify-commutativity': (args, _c) =>
+        Handlers.verifyCommutativityHandler(args as unknown as VerifyCommutativityHandlerArgs),
 
-    'get-category-axioms': (args, c) =>
-        Handlers.getCategoryAxiomsHandler(args as unknown as GetCategoryAxiomsHandlerArgs, c.categoricalHelpers),
+    'get-category-axioms': (args, _c) =>
+        Handlers.getCategoryAxiomsHandler(args as unknown as GetCategoryAxiomsHandlerArgs),
 
     'translate-text': (args, c) =>
         LLMHandlers.translateTextHandler(args as unknown as TranslateRequest, c.inputRouter),
