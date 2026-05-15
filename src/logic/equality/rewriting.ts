@@ -15,19 +15,13 @@ import { Clause } from '../../types/clause.js';
 export function generateRewritingAxioms(clauses: Clause[]): string[] {
     const rules = extractAndOrientRules(clauses);
 
-    if (rules.length === 0) {
-        return [];
-    }
+    if (rules.length === 0) return [];
 
-    const axioms: string[] = [];
+    return [
+        // 1. Rewrite rules (base cases)
+        ...rules.map(({ from, to }) => `rewrite_rule(${from}, ${to}).`),
 
-    // 1. Rewrite rules (base cases)
-    rules.forEach(({ from, to }) => {
-        axioms.push(`rewrite_rule(${from}, ${to}).`);
-    });
-
-    // 2. Normalization Engine
-    axioms.push(...[
+        // 2. Normalization Engine
         '% Rewriting Logic',
         'normalize(X, Y) :- rewrite_step(X, Z), !, normalize(Z, Y).',
         'normalize(X, X).',
@@ -51,9 +45,7 @@ export function generateRewritingAxioms(clauses: Clause[]): string[] {
 
         // Equality definition based on convergence
         'eq(X, Y) :- normalize(X, NX), normalize(Y, NY), NX == NY.'
-    ]);
-
-    return axioms;
+    ];
 }
 
 interface RewriteRule {
@@ -86,10 +78,7 @@ function extractAndOrientRules(clauses: Clause[]): RewriteRule[] {
 
 function hasVariables(node: ASTNode): boolean {
     if (node.type === 'variable') return true;
-    if (node.args) {
-        return node.args.some(hasVariables);
-    }
-    return false;
+    return node.args?.some(hasVariables) ?? false;
 }
 
 function orient(t1: string, t2: string): RewriteRule | null {

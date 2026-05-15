@@ -136,14 +136,11 @@ function getFreeVariables(node: ASTNode): string[] {
     const vars = new Set<string>();
 
     function traverse(n: ASTNode) {
-        if (n.type === 'variable') {
-            vars.add(n.name!);
-        }
-        // Recurse
-        if (n.left) traverse(n.left);
-        if (n.right) traverse(n.right);
-        if (n.operand) traverse(n.operand);
-        if (n.args) n.args.forEach(traverse);
+        if (n.type === 'variable') vars.add(n.name!);
+        n.left && traverse(n.left);
+        n.right && traverse(n.right);
+        n.operand && traverse(n.operand);
+        n.args?.forEach(traverse);
     }
 
     traverse(node);

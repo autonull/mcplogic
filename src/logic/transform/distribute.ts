@@ -12,15 +12,11 @@ export function distribute(
     startTime: number
 ): ASTNode {
     // Check timeout
-    if (Date.now() - startTime > options.timeout) {
-        throw createTimeoutError(options.timeout, 'Clausification');
-    }
+    if (Date.now() - startTime > options.timeout) throw createTimeoutError(options.timeout, 'Clausification');
 
     // Check size limit
     options._nodeCount = (options._nodeCount || 0) + 1;
-    if (options._nodeCount > 50000) {
-        throw createGenericError('CLAUSIFICATION_BLOWUP', 'Formula too complex (node limit exceeded)');
-    }
+    if (options._nodeCount > 50000) throw createGenericError('CLAUSIFICATION_BLOWUP', 'Formula too complex (node limit exceeded)');
 
     switch (node.type) {
         case 'and':

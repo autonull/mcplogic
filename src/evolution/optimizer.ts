@@ -10,21 +10,12 @@ import * as path from 'path';
  * Orchestrates the evolution loop.
  */
 export class Optimizer {
-    private evolver: StrategyEvolver;
-    private evaluator: Evaluator;
-    private config: EvolutionConfig;
-
     constructor(
-        _db: IPerformanceDatabase,
-        evolver: StrategyEvolver,
-        evaluator: Evaluator,
-        config: EvolutionConfig
-    ) {
-        // db currently unused but kept in signature for future persistence
-        this.evolver = evolver;
-        this.evaluator = evaluator;
-        this.config = config;
-    }
+        private _db: IPerformanceDatabase,
+        private evolver: StrategyEvolver,
+        private evaluator: Evaluator,
+        private config: EvolutionConfig
+    ) {}
 
     /**
      * Loads evaluation cases from disk.

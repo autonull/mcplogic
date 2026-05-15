@@ -77,14 +77,14 @@ Original: https://github.com/angrysky56/mcp-logic/
 ```bash
 git clone <repository>
 cd mcplogic
-npm install
-npm run build
+pnpm install
+pnpm run build
 ```
 
 ### Running the Server
 
 ```bash
-npm start
+pnpm start
 ```
 
 ### Verification
@@ -92,7 +92,7 @@ npm start
 Run the comprehensive health check to verify build, tests, and engine availability:
 
 ```bash
-npm run verify
+pnpm run verify
 ```
 
 ### Claude Desktop / MCP Client Configuration
@@ -266,9 +266,9 @@ Future improvements may address these limitations as real-world usage dictates.
 ## Development
 
 ```bash
-npm run build     # Compile TypeScript
-npm test          # Run test suite
-npm run dev       # Development mode with auto-reload
+pnpm run build     # Compile TypeScript
+pnpm test          # Run test suite
+pnpm run dev       # Development mode with auto-reload
 ```
 
 ---
@@ -301,4 +301,4 @@ If you encounter errors related to `z3-solver` or `clingo-wasm`:
 3. If you see `OOM` or memory errors, try running with the default engine (Prolog) or increasing the timeout/inference limits.
 
 ### build:browser Failures
-Ensure you have run `npm install` to get the latest type definitions. The browser build relies on specific overrides for WASM modules that are handled in `src/engines/*/index.ts`.
+Ensure you have run `pnpm install` to get the latest type definitions. The browser build relies on specific overrides for WASM modules that are handled in `src/engines/*/index.ts`.

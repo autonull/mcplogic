@@ -42,13 +42,8 @@ function simplifyChildren(node: ASTNode): ASTNode {
     return clone;
 }
 
-function isTrue(node: ASTNode): boolean {
-    return node.type === 'constant' && node.name === 'true'; // Assuming 'true' constant representation
-}
-
-function isFalse(node: ASTNode): boolean {
-    return node.type === 'constant' && node.name === 'false'; // Assuming 'false' constant representation
-}
+const isTrue = (node: ASTNode): boolean => node.type === 'constant' && node.name === 'true';
+const isFalse = (node: ASTNode): boolean => node.type === 'constant' && node.name === 'false';
 
 function areEqual(a: ASTNode, b: ASTNode): boolean {
     // Structural equality check

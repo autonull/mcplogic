@@ -29,19 +29,17 @@ function extractClauses(node: ASTNode): Clause[] {
         if (n.type === 'and') {
             extractConjuncts(n.left!);
             extractConjuncts(n.right!);
-        } else {
-            // This should be a disjunction (or single literal)
-            const literals = extractDisjuncts(n);
-            clauses.push({ literals });
+            return;
         }
+
+        // This should be a disjunction (or single literal)
+        clauses.push({ literals: extractDisjuncts(n) });
     }
 
     function extractDisjuncts(n: ASTNode): Literal[] {
-        if (n.type === 'or') {
-            return [...extractDisjuncts(n.left!), ...extractDisjuncts(n.right!)];
-        } else {
-            return [nodeToLiteral(n)];
-        }
+        return n.type === 'or'
+            ? [...extractDisjuncts(n.left!), ...extractDisjuncts(n.right!)]
+            : [nodeToLiteral(n)];
     }
 
     extractConjuncts(node);

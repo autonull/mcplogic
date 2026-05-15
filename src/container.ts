@@ -1,5 +1,4 @@
 import { ModelFinder, createModelFinder } from './model/index.js';
-import { CategoricalHelpers } from './axioms/categorical.js';
 import { SessionManager, createSessionManager } from './session/manager.js';
 import { FileSessionStorage } from './session/file-storage.js';
 import { EngineManager, createEngineManager } from './engines/manager.js';
@@ -13,7 +12,6 @@ import { HEURISTIC_STRATEGY, LLM_STRATEGY } from './evolution/defaults.js';
 
 export interface ServerContainer {
     modelFinder: ModelFinder;
-    categoricalHelpers: CategoricalHelpers;
     sessionManager: SessionManager;
     engineManager: EngineManager;
     llmProvider: StandardLLMProvider;
@@ -31,7 +29,6 @@ export function createContainer(): ServerContainer {
     // Initialize engines and managers
     const engineManager = createEngineManager();
     const modelFinder = createModelFinder(undefined, undefined, engineManager);
-    const categoricalHelpers = new CategoricalHelpers();
 
     // Initialize Session Persistence
     // Only use persistence if configured or default to local dir
@@ -69,7 +66,6 @@ export function createContainer(): ServerContainer {
 
     return {
         modelFinder,
-        categoricalHelpers,
         sessionManager,
         engineManager,
         llmProvider,

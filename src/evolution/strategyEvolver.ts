@@ -7,13 +7,7 @@ import { randomUUID } from 'crypto';
  * Responsible for mutating translation strategies to improve their performance.
  */
 export class StrategyEvolver {
-    private llm: LLMProvider;
-    private db: IPerformanceDatabase;
-
-    constructor(llm: LLMProvider, db: IPerformanceDatabase) {
-        this.llm = llm;
-        this.db = db;
-    }
+    constructor(private llm: LLMProvider, private db: IPerformanceDatabase) {}
 
     /**
      * Mutates a strategy by critiquing its prompt based on failing examples.

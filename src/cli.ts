@@ -253,81 +253,135 @@ async function runRepl(highPower: boolean) {
         prompt: 'mcplogic> '
     });
 
-    console.log(`MCP Logic REPL v${VERSION}${highPower ? ' [HIGH-POWER]' : ''}`);
-    console.log('Commands: .assert <formula>, .prove <goal>, .list, .clear, .quit, .help\n');
-    rl.prompt();
+console.log(`MCP Logic REPL v${VERSION}${highPower ? ' [HIGH-POWER]' : ''}`);
+  console.log(`Commands: .assert <formula>, .prove <goal>, .model, .list, .load <file>, .clear, .quit, .help\n`);
+  rl.prompt();
 
     rl.on('line', async (line) => {
         const trimmed = line.trim();
+        const firstSpace = trimmed.indexOf(' ');
+        const command = firstSpace > -1 ? trimmed.slice(0, firstSpace) : trimmed;
+        const arg = firstSpace > -1 ? trimmed.slice(firstSpace + 1).trim() : '';
 
-        if (trimmed === '.help') {
-            console.log('Commands:');
-            console.log('  .assert <formula>   Add a premise to the session');
-            console.log('  .tell <text>        Translate natural language and assert');
-            console.log('  .prove <goal>       Try to prove goal from premises');
-            console.log('  .list               List current premises');
-            console.log('  .clear              Clear all premises');
-            console.log('  .quit, .exit, .q    Exit REPL');
-            console.log('  .help               Show this help');
-        } else if (trimmed.startsWith('.tell ')) {
-            const text = trimmed.slice(6).trim();
-            try {
-                const formulas = await agent.translate(text);
-                for (const f of formulas) {
-                    agent.assert(f);
-                    console.log(`✓ Asserted: ${f}`);
+        switch (command) {
+            case '.help':
+                console.log('Commands:');
+                console.log(' .assert <formula> Add a premise to the session');
+                console.log(' .tell <text> Translate natural language and assert');
+                console.log(' .prove <goal> Try to prove goal from premises');
+                console.log(' .model <goal> Find model for goal (satisfiability)');
+                console.log(' .load <file> Load and assert formulas from .p file');
+                console.log(' .list List current premises');
+                console.log(' .clear Clear all premises');
+                console.log(' .quit, .exit, .q Exit REPL');
+                console.log(' .help Show this help');
+                console.log('\nExamples:');
+                console.log(' .assert "all x (man(x) -> mortal(x))"');
+                console.log(' .assert "man(socrates)"');
+                console.log(' .prove "mortal(socrates)"');
+                console.log(' .load examples/01-socrates.p');
+                break;
+            case '.load':
+                try {
+                    if (!existsSync(arg)) {
+                        console.log(`✗ File not found: ${arg}`);
+                    } else {
+                        const content = readFileSync(arg, 'utf-8');
+                        const lines = content.split('\n')
+                            .map(l => l.trim())
+                            .filter(l => l && !l.startsWith('#') && !l.startsWith('%'));
+                        for (const formula of lines) {
+                            agent.assert(formula);
+                            console.log(`✓ ${formula}`);
+                        }
+                        console.log(`(Loaded ${lines.length} formulas, ${agent.getPremises().length} total premises)`);
+                    }
+                } catch (e) {
+                    console.log(`✗ ${(e as Error).message}`);
                 }
-                console.log(`(${agent.getPremises().length} total premises)`);
-            } catch (e) {
-                console.log(`✗ Translation error: ${(e as Error).message}`);
-            }
-        } else if (trimmed.startsWith('.assert ')) {
-            const formula = trimmed.slice(8).trim();
-            try {
-                agent.assert(formula);
-                console.log(`✓ Asserted (${agent.getPremises().length} total)`);
-            } catch (e) {
-                console.log(`✗ ${(e as Error).message}`);
-            }
-        } else if (trimmed.startsWith('.prove ')) {
-            const goal = trimmed.slice(7).trim();
-            try {
-                console.log(`Reasoning...`);
-                const result = await agent.prove(goal);
+                break;
+            case '.tell':
+                try {
+                    const formulas = await agent.translate(arg);
+                    for (const f of formulas) {
+                        agent.assert(f);
+                        console.log(`✓ Asserted: ${f}`);
+                    }
+                    console.log(`(${agent.getPremises().length} total premises)`);
+                } catch (e) {
+                    console.log(`✗ Translation error: ${(e as Error).message}`);
+                }
+                break;
+            case '.assert':
+                try {
+                    agent.assert(arg);
+                    console.log(`✓ Asserted (${agent.getPremises().length} total)`);
+                } catch (e) {
+                    console.log(`✗ ${(e as Error).message}`);
+                }
+                break;
+            case '.prove':
+                try {
+                    console.log(`Reasoning...`);
+                    const result = await agent.prove(arg);
 
-                if (result.answer === 'True') {
-                    console.log('✓ Proved (TRUE)');
-                } else if (result.answer === 'False') {
-                    console.log('✗ Disproved (FALSE) - Counterexample found');
+                    if (result.answer === 'True') {
+                        console.log('✓ Proved (TRUE)');
+                    } else if (result.answer === 'False') {
+                        console.log('✗ Disproved (FALSE) - Counterexample found');
+                    } else {
+                        console.log('? Unknown (Cannot prove or disprove)');
+                    }
+
+                    // Show trace/explanation if available
+                    if (result.steps.length > 0) {
+                        console.log('\nSteps:');
+                        result.steps.forEach(s => {
+                            console.log(`- [${s.action.type}] ${s.action.content} -> ${s.action.explanation || ''}`);
+                        });
+                    }
+                } catch (e) {
+                    console.log(`✗ ${(e as Error).message}`);
+                }
+                break;
+            case '.model':
+                try {
+                    const premises = agent.getPremises();
+                    const finder = createModelFinder(30000, 10);
+                    const result = await finder.findModel([...premises, arg]);
+                    if (result.success) {
+                        console.log('✓ SATISFIABLE - Model found:');
+                        console.log(JSON.stringify(result.model, null, 2));
+                    } else {
+                        console.log('✗ UNSATISFIABLE - No model exists');
+                    }
+                } catch (e) {
+                    console.log(`✗ ${(e as Error).message}`);
+                }
+                break;
+            case '.list': {
+                const premises = agent.getPremises();
+                if (premises.length === 0) {
+                    console.log('(no premises)');
                 } else {
-                    console.log('? Unknown (Cannot prove or disprove)');
+                    premises.forEach((p, i) => console.log(`${i + 1}. ${p}`));
                 }
-
-                // Show trace/explanation if available
-                if (result.steps.length > 0) {
-                    console.log('\nSteps:');
-                    result.steps.forEach(s => {
-                        console.log(`- [${s.action.type}] ${s.action.content} -> ${s.action.explanation || ''}`);
-                    });
+                break;
+            }
+            case '.clear':
+                agent.clear();
+                console.log('Cleared.');
+                break;
+            case '.quit':
+            case '.exit':
+            case '.q':
+                rl.close();
+                return;
+            default:
+                if (trimmed && !trimmed.startsWith('.')) {
+                    console.log('Unknown command. Use .assert, .prove, .list, .clear, or .quit');
                 }
-            } catch (e) {
-                console.log(`✗ ${(e as Error).message}`);
-            }
-        } else if (trimmed === '.list') {
-            const premises = agent.getPremises();
-            if (premises.length === 0) {
-                console.log('(no premises)');
-            } else {
-                premises.forEach((p, i) => console.log(`${i + 1}. ${p}`));
-            }
-        } else if (trimmed === '.clear') {
-            agent.clear();
-            console.log('Cleared.');
-        } else if (trimmed === '.quit' || trimmed === '.exit' || trimmed === '.q') {
-            rl.close();
-            return;
-        } else if (trimmed && !trimmed.startsWith('.')) {
-            console.log('Unknown command. Use .assert, .prove, .list, .clear, or .quit');
+                break;
         }
         rl.prompt();
     });
