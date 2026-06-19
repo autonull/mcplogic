@@ -78,10 +78,13 @@ export class HeuristicTranslator implements TranslationStrategy {
         }
 
         // 3. "Some men are mortal" -> exists x (man(x) & mortal(x))
-        const someAre = s.match(/^some (\w+) are (\w+)$/);
+        // Handles "Some dogs are carnivores" -> exists x (dog(x) & carnivore(x))
+        const someAre = s.match(/^some (.+?) are (.+)$/);
         if (someAre) {
-            const sub = this.singularize(someAre[1]);
-            const pred = this.singularize(someAre[2]);
+            let sub = this.singularize(someAre[1].trim());
+            sub = sub.replace(/^(the\s+|a\s+|an\s+)/i, '').trim().replace(/\s+/g, '_');
+            let predWords = someAre[2].trim().split(/\s+/);
+            const pred = this.singularize(predWords.join('_'));
             return `exists x (${sub}(x) & ${pred}(x))`;
         }
 
